@@ -3,6 +3,8 @@ create table users (
   id uuid default gen_random_uuid() primary key,
   email text unique not null,
   name text,
+  password_hash text,
+  avatar text,
   google_id text unique,
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
