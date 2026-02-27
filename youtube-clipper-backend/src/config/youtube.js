@@ -104,14 +104,27 @@ const rapidApiRequest = async (endpoint, rawParams) => {
     // Step 3: 403 may come as 200 with error body
     if (response.data?.error?.code === 403 || response.data?.code === 403) {
         console.log(`[RapidAPI] 403 in response body for ${endpoint}`);
-        // If we have cached data from the handle search, use it
-        if (cachedSearchItem) {
-            console.log(`[RapidAPI] Serving cached search hit instead`);
-            const sn = cachedSearchItem.snippet || {};
+
+        // Build item from cache or do a new search by ID
+        let fallbackHit = cachedSearchItem;
+        if (!fallbackHit && (params.id || params.forHandle)) {
+            const q = String(params.id || params.forHandle);
+            console.log(`[RapidAPI] No cache — searching for: ${q}`);
+            try {
+                const items = await rapidSearch(q);
+                fallbackHit = items[0] || null;
+            } catch (fe) {
+                console.error(`[RapidAPI] Body-403 fallback search failed:`, fe.message);
+            }
+        }
+
+        if (fallbackHit) {
+            console.log(`[RapidAPI] Serving fallback hit for ${endpoint}`);
+            const sn = fallbackHit.snippet || {};
             return {
                 data: {
                     items: [{
-                        id: cachedSearchItem.id?.channelId || params.id,
+                        id: fallbackHit.id?.channelId || fallbackHit.id?.videoId || params.id,
                         snippet: {
                             ...sn,
                             title: sn.channelTitle || sn.title || 'Unknown Channel',

@@ -12,8 +12,6 @@ class YouTubeService {
         console.log(`[YouTubeService] getChannelInfo: ${channelIdOrUrl}`);
         const auth = accessToken ? accessToken : (process.env.YOUTUBE_API_KEY || oauth2Client);
 
-        let channelId = channelIdOrUrl;
-
         // Try to extract handle or ID from URL if provided
         if (channelIdOrUrl.includes('youtube.com')) {
             const handle = channelIdOrUrl.split('/').pop().replace('@', '');
@@ -23,21 +21,27 @@ class YouTubeService {
                 part: 'snippet,statistics,contentDetails',
                 forHandle: handle
             });
-            channelId = response.data.items?.[0]?.id;
-            console.log(`[YouTubeService] Found channelId for handle: ${channelId}`);
-            if (!channelId && !channelIdOrUrl.includes('/channel/')) {
+            // Return the item directly — shim already fetched full data via fallback
+            const channel = response.data.items?.[0];
+            console.log(`[YouTubeService] Found channel:`, channel?.snippet?.title || 'not found');
+            if (!channel) {
                 throw new Error('Canal não encontrado pelo handle.');
             }
+            return channel;
         }
 
-        if (channelId) {
-            const response = await youtube.channels.list({
-                auth,
-                part: 'snippet,statistics,contentDetails',
-                id: channelId
-            });
-            console.log(`[YouTubeService] channels.list by ID ${channelId} returned ${response.data.items?.length || 0} items`);
-            return response.data.items?.[0];
+        // Direct channel ID lookup
+        if (channelIdOrUrl) {
+            const channelId = channelIdOrUrl.startsWith('UC') ? channelIdOrUrl : null;
+            if (channelId) {
+                const response = await youtube.channels.list({
+                    auth,
+                    part: 'snippet,statistics,contentDetails',
+                    id: channelId
+                });
+                console.log(`[YouTubeService] channels.list by ID ${channelId} returned ${response.data.items?.length || 0} items`);
+                return response.data.items?.[0] || null;
+            }
         }
 
         return null;
