@@ -47,10 +47,12 @@ const addChannel = async (req, res) => {
 
         console.log(`[AddChannel] Searching YouTube with params:`, JSON.stringify(params));
         const ytRes = await youtube.channels.list(params);
+        console.log(`[AddChannel] ytRes.data received:`, JSON.stringify(ytRes.data).substring(0, 500)); // Log first 500 chars
+
         const ch = ytRes.data.items?.[0];
 
         if (!ch) {
-            console.log(`[AddChannel] Channel not found for identifier: ${identifier}`);
+            console.log(`[AddChannel] Channel not found for identifier: ${identifier}. Items array:`, ytRes.data.items);
             return res.status(404).json({ error: 'Canal não encontrado no YouTube.' });
         }
 
