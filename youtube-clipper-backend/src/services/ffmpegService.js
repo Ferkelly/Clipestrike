@@ -17,38 +17,49 @@ class FFmpegService {
     }
 
     // Extrair clip vertical (9:16) para Shorts/TikTok
-    async extractVerticalClip(inputPath, startTime, duration, outputName) {
+    async extractVerticalClip(inputPath, startTime, duration, outputName, options = {}) {
+        const { xOffset = 0.5, subtitlesPath = null } = options;
         const outputPath = path.join(this.outputDir, `${outputName}.mp4`);
 
         return new Promise((resolve, reject) => {
+            const filters = [
+                // 1. Crop dinâmico baseado no enquadramento inteligente (xOffset entre 0 e 1)
+                // Fórmula: crop=largura_alvo:altura_alvo:posicao_x:posicao_y
+                // largura_alvo = ih * 9/16
+                // posicao_x = (iw * xOffset) - (largura_alvo / 2)
+                `crop=ih*9/16:ih:min(max(0,iw*${xOffset}-ih*9/32),iw-ih*9/16):0`,
+
+                // 2. Scale para 1080x1920
+                'scale=1080:1920:flags=lanczos',
+
+                // 3. Melhorar cores/contraste
+                'eq=contrast=1.1:saturation=1.2'
+            ];
+
+            // 4. Adicionar legendas se fornecidas
+            if (subtitlesPath) {
+                // FFmpeg utiliza caminhos no estilo unix até no Windows para filtros de legenda
+                const escapedPath = subtitlesPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+                filters.push(`subtitles='${escapedPath}'`);
+            }
+
             ffmpeg(inputPath)
                 .setStartTime(startTime)
                 .setDuration(duration)
-                .videoFilters([
-                    // Crop para 9:16 (1080x1920)
-                    'crop=ih*9/16:ih:(iw-ih*9/16)/2:0',
-                    // Scale para 1080x1920
-                    'scale=1080:1920:flags=lanczos',
-                    // Melhorar cores/contraste
-                    'eq=contrast=1.1:saturation=1.1'
-                ])
+                .videoFilters(filters)
                 .videoCodec('libx264')
                 .audioCodec('aac')
                 .outputOptions([
                     '-pix_fmt yuv420p',
                     '-movflags +faststart',
                     '-preset fast',
-                    '-crf 23',
+                    '-crf 20', // Qualidade levemente superior (20 vs 23)
                     '-profile:v high',
                     '-level 4.2',
-                    '-r 60' // 60fps para smooth
+                    '-r 60'
                 ])
-                .size('1080x1920')
                 .on('start', (cmd) => {
                     console.log('Iniciando FFmpeg:', cmd);
-                })
-                .on('progress', (progress) => {
-                    console.log(`Processando: ${progress.percent}%`);
                 })
                 .on('end', () => {
                     console.log('Clip criado:', outputPath);

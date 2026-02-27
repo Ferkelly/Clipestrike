@@ -98,52 +98,54 @@ class AIService {
     // Transcrever áudio — Whisper local (gratuito, offline) ou Hugging Face API (fallback)
     async transcribeAudio(audioPath) {
         try {
-            return await this._transcribeLocal(audioPath);
-        } catch {
-            console.log('Whisper local não disponível, usando Hugging Face API...');
-            return await this._transcribeHuggingFace(audioPath);
+            const data = await this.transcribeWithWords(audioPath);
+            return data.text;
+        } catch (err) {
+            console.log('Transcription failed, falling back to basic...');
+            return 'Could not transcribe.';
         }
     }
 
-    // Opção 1: Whisper CLI local — GRATUITO, sem API key, funciona offline
-    // Instalar: pip install openai-whisper
-    async _transcribeLocal(audioPath) {
+    // Transcrever com palavras e timestamps (usando script Python)
+    async transcribeWithWords(audioPath) {
         const { exec } = require('child_process');
         const util = require('util');
         const path = require('path');
-        const fs = require('fs');
         const execPromise = util.promisify(exec);
 
-        const outputDir = path.dirname(audioPath);
-        const baseName = path.basename(audioPath, path.extname(audioPath));
+        const scriptPath = path.join(__dirname, '../../scripts/transcribe_with_words.py');
 
-        await execPromise(
-            `whisper "${audioPath}" --model base --language Portuguese --output_format txt --output_dir "${outputDir}"`
-        );
-
-        const txtPath = path.join(outputDir, `${baseName}.txt`);
-        const text = fs.readFileSync(txtPath, 'utf-8');
-        fs.unlinkSync(txtPath); // limpar arquivo temporário
-        return text.trim();
+        try {
+            console.log(`[AI] Transcribing with word-level timing: ${audioPath}`);
+            const { stdout } = await execPromise(`python "${scriptPath}" "${audioPath}"`);
+            const data = JSON.parse(stdout);
+            if (data.error) throw new Error(data.error);
+            return data;
+        } catch (error) {
+            console.error('[AI] transcribeWithWords error:', error.message);
+            throw error;
+        }
     }
 
-    // Opção 2: Hugging Face Inference API — gratuito (requer HUGGINGFACE_API_KEY)
-    async _transcribeHuggingFace(audioPath) {
-        const fs = require('fs');
-        const audioBuffer = fs.readFileSync(audioPath);
+    // Calcular enquadramento inteligente
+    async getSmartFraming(videoPath) {
+        const { exec } = require('child_process');
+        const util = require('util');
+        const path = require('path');
+        const execPromise = util.promisify(exec);
 
-        const response = await axios.post(
-            `${this.baseUrl}/openai/whisper-large-v3`,
-            audioBuffer,
-            {
-                headers: {
-                    'Authorization': `Bearer ${this.hfApiKey}`,
-                    'Content-Type': 'audio/mpeg'
-                }
-            }
-        );
+        const scriptPath = path.join(__dirname, '../../scripts/smart_framing.py');
 
-        return response.data.text;
+        try {
+            console.log(`[AI] Calculating smart framing for: ${videoPath}`);
+            const { stdout } = await execPromise(`python "${scriptPath}" "${videoPath}"`);
+            const data = JSON.parse(stdout);
+            if (data.error) throw new Error(data.error);
+            return data;
+        } catch (error) {
+            console.warn('[AI] smart_framing failed, using center:', error.message);
+            return { x_offset_pct: 0.5 };
+        }
     }
 
     // Análise de sentimento/engajamento

@@ -9,6 +9,13 @@ class ClipController {
     // Iniciar processamento de vídeo
     async processVideo(req, res) {
         const { videoId } = req.params;
+        const fs = require('fs');
+        const io = req.app.get('io');
+        const emit = (msg) => {
+            console.log(`[Process] ${msg}`);
+            io?.emit('video-progress', { videoId, message: msg });
+            io?.emit(`video-${videoId}`, { event: 'progress', message: msg });
+        };
 
         try {
             const { data: video, error } = await supabase
@@ -23,69 +30,122 @@ class ClipController {
 
             // Atualizar status
             await db.updateVideoStatus(videoId, 'processing');
+            res.json({ success: true, message: 'Processamento iniciado' });
 
-            // 1. Download do vídeo
-            const videoUrl = `https://youtube.com/watch?v=${video.youtube_video_id}`;
-            const downloadPath = path.join(__dirname, '../../uploads', `${videoId}.mp4`);
+            // Processamento em background
+            setImmediate(async () => {
+                try {
+                    // 1. Download do vídeo
+                    emit('Baixando vídeo do YouTube...');
+                    const videoUrl = `https://youtube.com/watch?v=${video.youtube_video_id}`;
+                    const downloadPath = path.join(__dirname, '../../uploads', `${videoId}.mp4`);
 
-            await youTubeService.downloadVideo(videoUrl, downloadPath);
+                    if (!fs.existsSync(path.dirname(downloadPath))) {
+                        fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
+                    }
 
-            // 2. Extrair áudio para transcrição
-            const audioPath = path.join(__dirname, '../../uploads', `${videoId}.mp3`);
-            await ffmpegService.extractAudio(downloadPath, audioPath);
+                    await youTubeService.downloadVideo(videoUrl, downloadPath);
 
-            // 3. Transcrever
-            const transcription = await aiService.transcribeAudio(audioPath);
+                    // 2. Transcrever com sincronia de palavras (Word-level timestamps)
+                    emit('Extraindo áudio e transcrevendo (IA)...');
+                    const audioPath = path.join(__dirname, '../../uploads', `${videoId}.mp3`);
+                    await ffmpegService.extractAudio(downloadPath, audioPath);
 
-            // 4. Analisar momentos virais
-            const analysis = await aiService.analyzeTranscription(transcription);
+                    const transcriptionData = await aiService.transcribeWithWords(audioPath);
+                    const transcription = transcriptionData.text;
 
-            // 5. Criar clips
-            const clips = [];
-            for (const clipData of analysis.clips) {
-                const startSeconds = this.timeToSeconds(clipData.start);
-                const duration = this.timeToSeconds(clipData.end) - startSeconds;
+                    // 3. Analisar momentos virais
+                    emit('Analisando momentos virais com IA...');
+                    const analysis = await aiService.analyzeTranscription(transcription);
 
-                const clipPath = await ffmpegService.extractVerticalClip(
-                    downloadPath,
-                    startSeconds,
-                    duration,
-                    `${videoId}_${clips.length}`
-                );
+                    // 4. Calcular enquadramento inteligente (Smart Framing)
+                    emit('Calculando enquadramento inteligente (Face Detection)...');
+                    const framingData = await aiService.getSmartFraming(downloadPath);
+                    const xOffset = framingData.x_offset_pct;
 
-                // Upload para storage
-                const fileName = `${videoId}_${clips.length}.mp4`;
-                const fileBuffer = require('fs').readFileSync(clipPath);
+                    // 5. Criar clips com legendas dinâmicas
+                    const subtitleGenerator = require('../utils/subtitleGenerator');
+                    const clipsCount = analysis.clips.length;
+                    const createdClips = [];
 
-                await db.uploadFile('clips', fileName, fileBuffer);
-                const publicUrl = await db.getPublicUrl('clips', fileName);
+                    for (let i = 0; i < clipsCount; i++) {
+                        emit(`Gerando clip ${i + 1} de ${clipsCount} com legendas estilo Hormozi...`);
+                        const clipData = analysis.clips[i];
+                        const startSeconds = this.timeToSeconds(clipData.start);
+                        const endSeconds = this.timeToSeconds(clipData.end);
+                        const duration = endSeconds - startSeconds;
 
-                // Salvar no banco
-                const clip = await db.createClip({
-                    video_id: videoId,
-                    title: clipData.title,
-                    start_time: clipData.start,
-                    end_time: clipData.end,
-                    viral_score: clipData.viral_score,
-                    file_url: publicUrl,
-                    status: 'ready',
-                    hook: clipData.hook,
-                    reason: clipData.reason
-                });
+                        if (duration <= 0) continue;
 
-                clips.push(clip);
-            }
+                        const clipWords = transcriptionData.words.filter(w =>
+                            w.start >= startSeconds && w.end <= endSeconds
+                        ).map(w => ({
+                            ...w,
+                            start: w.start - startSeconds,
+                            end: w.end - startSeconds
+                        }));
 
-            // Atualizar vídeo como concluído
-            await db.updateVideoStatus(videoId, 'completed', {
-                transcription,
-                processed_at: new Date()
+                        const assPath = path.join(__dirname, '../../uploads', `${videoId}_${i}.ass`);
+                        subtitleGenerator.generateAss(clipWords, assPath);
+
+                        const clipPath = await ffmpegService.extractVerticalClip(
+                            downloadPath,
+                            startSeconds,
+                            duration,
+                            `${videoId}_${i}`,
+                            {
+                                xOffset: xOffset,
+                                subtitlesPath: assPath
+                            }
+                        );
+
+                        const fileName = `${videoId}_${i}_${Date.now()}.mp4`;
+                        const fileBuffer = fs.readFileSync(clipPath);
+
+                        await db.uploadFile('clips', fileName, fileBuffer);
+                        const publicUrl = await db.getPublicUrl('clips', fileName);
+
+                        const clip = await db.createClip({
+                            video_id: videoId,
+                            title: clipData.title,
+                            start_time: clipData.start,
+                            end_time: clipData.end,
+                            viral_score: clipData.viral_score,
+                            file_url: publicUrl,
+                            status: 'ready',
+                            hook: clipData.hook,
+                            reason: clipData.reason
+                        });
+
+                        createdClips.push(clip);
+
+                        if (fs.existsSync(clipPath)) fs.unlinkSync(clipPath);
+                        if (fs.existsSync(assPath)) fs.unlinkSync(assPath);
+                    }
+
+                    // Atualizar vídeo como concluído
+                    await db.updateVideoStatus(videoId, 'completed', {
+                        transcription,
+                        processed_at: new Date()
+                    });
+
+                    // Limpar arquivos pesados
+                    if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+                    if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+
+                    io?.emit('video-progress', { videoId, status: 'done', clipsCount: createdClips.length });
+                    io?.emit(`video-${videoId}`, { event: 'done', clipsCount: createdClips.length });
+
+                } catch (backgroundError) {
+                    console.error('[ProcessVideo] Background error:', backgroundError);
+                    await db.updateVideoStatus(videoId, 'failed', { error_message: backgroundError.message });
+                    io?.emit('video-progress', { videoId, status: 'error', message: backgroundError.message });
+                    io?.emit(`video-${videoId}`, { event: 'error', message: backgroundError.message });
+                }
             });
 
-            res.json({ success: true, clips });
-
         } catch (error) {
-            await db.updateVideoStatus(videoId, 'failed', { error: error.message });
+            console.error('[ProcessVideo] Immediate error:', error);
             res.status(500).json({ error: error.message });
         }
     }
