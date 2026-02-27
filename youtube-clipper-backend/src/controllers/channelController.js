@@ -19,6 +19,7 @@ const listChannels = async (req, res) => {
 
 // POST /api/channels → Adicionar canal por URL ou handle
 const addChannel = async (req, res) => {
+    console.log(`[AddChannel] Starting for user ${req.user.id}, URL: ${req.body?.url}`);
     try {
         const { url } = req.body;
         if (!url) return res.status(400).json({ error: 'URL ou handle do canal é obrigatório.' });
@@ -28,7 +29,12 @@ const addChannel = async (req, res) => {
         const handleMatch = url.match(/youtube\.com\/@([a-zA-Z0-9_.-]+)/);
         const channelIdMatch = url.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]+)/);
 
-        const params = { part: ['snippet', 'statistics', 'contentDetails'], maxResults: 1 };
+        const params = {
+            part: ['snippet', 'statistics', 'contentDetails'],
+            maxResults: 1,
+            auth: process.env.YOUTUBE_API_KEY
+        };
+
         if (channelIdMatch) {
             params.id = [channelIdMatch[1]];
         } else if (handleMatch) {
@@ -39,13 +45,23 @@ const addChannel = async (req, res) => {
             params.forHandle = identifier.replace('@', '');
         }
 
+        console.log(`[AddChannel] Searching YouTube with params:`, JSON.stringify(params));
         const ytRes = await youtube.channels.list(params);
         const ch = ytRes.data.items?.[0];
-        if (!ch) return res.status(404).json({ error: 'Canal não encontrado no YouTube.' });
+
+        if (!ch) {
+            console.log(`[AddChannel] Channel not found for identifier: ${identifier}`);
+            return res.status(404).json({ error: 'Canal não encontrado no YouTube.' });
+        }
+
+        console.log(`[AddChannel] Found channel: ${ch.snippet?.title} (${ch.id})`);
 
         // Verificar se já existe
         const existing = await db.getChannelByYoutubeId(ch.id);
-        if (existing) return res.status(409).json({ error: 'Canal já cadastrado.', channel: existing });
+        if (existing) {
+            console.log(`[AddChannel] Channel already exists: ${ch.id}`);
+            return res.status(409).json({ error: 'Canal já cadastrado.', channel: existing });
+        }
 
         const channel = await db.createChannel({
             user_id: req.user.id,
@@ -61,6 +77,7 @@ const addChannel = async (req, res) => {
         logger.info(`Canal adicionado: ${channel.title} (user: ${req.user.id})`);
         res.status(201).json({ channel });
     } catch (err) {
+        console.error(`[AddChannel] Fatal error:`, err);
         logger.error(`Erro ao adicionar canal: ${err.message}`);
         res.status(400).json({ error: err.message });
     }

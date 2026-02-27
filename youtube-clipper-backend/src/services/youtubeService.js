@@ -9,26 +9,38 @@ class YouTubeService {
     // Obter info do canal pelo URL ou ID
     // Custo: 1 unidade (channels.list)
     async getChannelInfo(channelIdOrUrl, accessToken) {
-        oauth2Client.setCredentials({ access_token: accessToken });
+        console.log(`[YouTubeService] getChannelInfo: ${channelIdOrUrl}`);
+        const auth = accessToken ? accessToken : (process.env.YOUTUBE_API_KEY || oauth2Client);
 
         let channelId = channelIdOrUrl;
 
+        // Try to extract handle or ID from URL if provided
         if (channelIdOrUrl.includes('youtube.com')) {
             const handle = channelIdOrUrl.split('/').pop().replace('@', '');
+            console.log(`[YouTubeService] Extracted handle: ${handle}`);
             const response = await youtube.channels.list({
+                auth,
                 part: 'snippet,statistics,contentDetails',
-                forHandle: handle.startsWith('@') ? handle : `@${handle}`
+                forHandle: handle
             });
-            channelId = response.data.items[0]?.id;
+            channelId = response.data.items?.[0]?.id;
+            console.log(`[YouTubeService] Found channelId for handle: ${channelId}`);
+            if (!channelId && !channelIdOrUrl.includes('/channel/')) {
+                throw new Error('Canal não encontrado pelo handle.');
+            }
         }
 
-        const response = await youtube.channels.list({
-            part: 'snippet,statistics,contentDetails',
-            id: channelId,
-            access_token: accessToken
-        });
+        if (channelId) {
+            const response = await youtube.channels.list({
+                auth,
+                part: 'snippet,statistics,contentDetails',
+                id: channelId
+            });
+            console.log(`[YouTubeService] channels.list by ID ${channelId} returned ${response.data.items?.length || 0} items`);
+            return response.data.items?.[0];
+        }
 
-        return response.data.items[0];
+        return null;
     }
 
     // Obter uploads playlist ID do canal — cacheado (1 unidade apenas na 1ª vez)
@@ -40,7 +52,14 @@ class YouTubeService {
             part: 'contentDetails',
             id: youtubeChannelId,
         });
-        const playlistId = res.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+        let playlistId = res.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+
+        // Fallback determinístico (UC -> UU)
+        if (!playlistId && youtubeChannelId.startsWith('UC')) {
+            playlistId = youtubeChannelId.replace(/^UC/, 'UU');
+            console.log(`[YouTubeService] Using deterministic uploads playlist ID: ${playlistId}`);
+        }
+
         if (playlistId) uploadsPlaylistCache.set(youtubeChannelId, playlistId);
         return playlistId;
     }

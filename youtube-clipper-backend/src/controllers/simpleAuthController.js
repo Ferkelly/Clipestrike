@@ -29,7 +29,7 @@ const register = async (req, res) => {
             avatar: null,
         });
 
-        const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET || 'clipstrike-secret', {
+        const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET || 'clipstrike-secret-key-2026', {
             expiresIn: '7d',
         });
 
@@ -68,7 +68,7 @@ const emailLogin = async (req, res) => {
             return res.status(401).json({ error: 'Email ou senha incorretos.' });
         }
 
-        const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET || 'clipstrike-secret', {
+        const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET || 'clipstrike-secret-key-2026', {
             expiresIn: '7d',
         });
 

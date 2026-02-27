@@ -26,6 +26,7 @@ export function DashboardPage() {
     useEffect(() => {
         apiGet<{ channels: Channel[] }>('/channels')
             .then(({ channels }) => setChannels(channels))
+            .catch((err) => console.error('[Dashboard] Failed to fetch channels:', err))
             .finally(() => setLoading(false));
     }, []);
 

@@ -16,14 +16,17 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        origin: [process.env.FRONTEND_URL || "http://localhost:3000", "http://127.0.0.1:3000"],
         methods: ["GET", "POST"]
     }
 });
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+    origin: [process.env.FRONTEND_URL || "http://localhost:3000", "http://127.0.0.1:3000"],
+    credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 
 // Rate limiting

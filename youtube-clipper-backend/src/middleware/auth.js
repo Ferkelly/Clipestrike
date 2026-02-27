@@ -15,7 +15,7 @@ const authenticate = async (req, res, next) => {
         }
 
         const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'clipstrike-secret-key-2026');
 
         const { data: user, error } = await supabase
             .from('users')
