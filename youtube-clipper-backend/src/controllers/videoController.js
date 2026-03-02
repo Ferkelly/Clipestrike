@@ -122,7 +122,11 @@ const processVideo = async (req, res) => {
 
         setImmediate(async () => {
             try {
-                emit('progress', { step: 'DOWNLOADING', message: 'Baixando vídeo do YouTube...' });
+                const emitProgress = (step, percent, message) => {
+                    emit('progress', { videoId: video.id, step, percent: Math.round(percent), message });
+                };
+
+                emitProgress('DOWNLOADING', 5, 'Baixando vídeo do YouTube...');
 
                 const path = require('path');
                 const fs = require('fs');
@@ -140,25 +144,27 @@ const processVideo = async (req, res) => {
 
                 await youTubeService.downloadVideo(videoUrl, downloadPath);
 
-                emit('progress', { step: 'EXTRACTING_AUDIO', message: 'Extraindo áudio para análise...' });
+                emitProgress('EXTRACTING_AUDIO', 20, 'Extraindo áudio para análise...');
 
                 // 2. Extrair áudio
                 const audioPath = path.join(uploadDir, `${video.id}.mp3`);
-                await ffmpegService.extractAudio(downloadPath, audioPath);
+                await ffmpegService.extractAudio(downloadPath, audioPath, (p) => {
+                    emitProgress('EXTRACTING_AUDIO', 20 + (p * 0.05), 'Extraindo áudio...');
+                });
 
-                emit('progress', { step: 'TRANSCRIBING', message: 'Transcrevendo áudio...' });
+                emitProgress('TRANSCRIBING', 25, 'Transcrevendo áudio com IA...');
 
                 // 3. Transcrever
                 const transcription = await aiService.transcribeAudio(audioPath);
 
-                emit('progress', { step: 'AI_ANALYSIS', message: 'Analisando momentos virais com IA...' });
+                emitProgress('AI_ANALYSIS', 40, 'Analisando momentos virais...');
 
                 // 4. Analisar momentos virais
                 const analysis = await aiService.analyzeTranscription(transcription);
 
-                emit('progress', { step: 'CLIPPING', message: `Criando ${analysis.clips?.length || 0} clips virais...` });
+                const clipsData = analysis.clips || [];
+                emitProgress('CLIPPING', 50, `Criando ${clipsData.length} clips virais...`);
 
-                // Função auxiliar para converter "HH:MM:SS" em segundos
                 const timeToSeconds = (timeStr) => {
                     if (!timeStr) return 0;
                     const parts = String(timeStr).split(':').map(Number);
@@ -167,12 +173,13 @@ const processVideo = async (req, res) => {
                     return Number(timeStr) || 0;
                 };
 
-                const clipsData = analysis.clips || [];
                 const createdClips = [];
 
                 for (let i = 0; i < clipsData.length; i++) {
                     const clipData = clipsData[i];
-                    emit('progress', { step: 'CLIPPING_PROGRESS', message: `Recortando clip ${i + 1} de ${clipsData.length}...` });
+                    const startPercent = 50 + (i / clipsData.length) * 50;
+
+                    emitProgress('CLIPPING_PROGRESS', startPercent, `Clip ${i + 1} de ${clipsData.length}: ${clipData.title}`);
 
                     const startSeconds = timeToSeconds(clipData.start);
                     const endSeconds = timeToSeconds(clipData.end);
@@ -186,16 +193,21 @@ const processVideo = async (req, res) => {
                             downloadPath,
                             startSeconds,
                             duration,
-                            `${video.id}_${i}`
+                            `${video.id}_${i}`,
+                            {
+                                onProgress: (p) => {
+                                    const stagePercent = (1 / clipsData.length) * 50;
+                                    const currentPercent = startPercent + (p / 100) * stagePercent;
+                                    emitProgress('CLIPPING_PROGRESS', currentPercent, `Processando clip ${i + 1}...`);
+                                }
+                            }
                         );
 
-                        // Upload para Supabase Storage (Assumindo que db.uploadFile está funcionando)
                         const fileName = `${video.id}_${i}_${Date.now()}.mp4`;
                         const fileBuffer = fs.readFileSync(clipPath);
                         await db.uploadFile('clips', fileName, fileBuffer);
                         const publicUrl = await db.getPublicUrl('clips', fileName);
 
-                        // Salvar clip no banco
                         const clip = await db.createClip({
                             video_id: video.id,
                             title: clipData.title || `Clip ${i + 1}`,
@@ -210,15 +222,12 @@ const processVideo = async (req, res) => {
                         });
 
                         createdClips.push(clip);
-
-                        // Limpar arquivo do clip local
                         fs.unlinkSync(clipPath);
                     } catch (clipErr) {
                         console.error(`Erro ao gerar clip ${i}:`, clipErr);
                     }
                 }
 
-                // Limpar arquivos temporários pesados
                 if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
                 if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
 
@@ -226,11 +235,11 @@ const processVideo = async (req, res) => {
                     processed_at: new Date()
                 });
 
-                emit('done', { clipsCount: createdClips.length });
+                io?.emit('video-progress', { videoId: video.id, status: 'done', clipsCount: createdClips.length });
             } catch (err) {
                 logger.error(`processVideo error: ${err.message}`);
                 await db.updateVideoStatus(video.id, 'failed', { error_message: err.message });
-                emit('error', { message: err.message });
+                io?.emit('video-progress', { videoId: video.id, status: 'error', message: err.message });
             }
         });
     } catch (err) {

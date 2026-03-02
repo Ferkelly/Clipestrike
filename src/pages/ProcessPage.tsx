@@ -57,6 +57,7 @@ export function ProcessPage() {
     const [importing, setImporting] = useState(false);
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [progressMsg, setProgressMsg] = useState<Record<string, string>>({});
+    const [progressPercent, setProgressPercent] = useState<Record<string, number>>({});
     const [expandedVideo, setExpandedVideo] = useState<string | null>(null);
 
     const loadVideos = useCallback(() => {
@@ -70,11 +71,14 @@ export function ProcessPage() {
 
     // Socket.IO: ouvir progresso de todos os vídeos em processamento
     useSocketEvent('video-progress', (data: unknown) => {
-        const d = data as { videoId: string } & ProcessEvent;
+        const d = data as { videoId: string; percent?: number } & ProcessEvent;
         if (d.message) {
             setProgressMsg((prev) => ({ ...prev, [d.videoId]: d.message! }));
         }
-        if (d.status === 'done' || d.status === 'error') {
+        if (typeof d.percent === 'number') {
+            setProgressPercent((prev) => ({ ...prev, [d.videoId]: d.percent! }));
+        }
+        if (d.status === 'done' || d.status === 'error' || d.event === 'done' || d.event === 'error') {
             setProcessingId(null);
             loadVideos();
         }
@@ -172,6 +176,22 @@ export function ProcessPage() {
                                                 <span className="text-xs text-yellow-400/70 truncate">{progressMsg[video.id]}</span>
                                             )}
                                         </div>
+
+                                        {/* Progress Bar */}
+                                        {video.status === 'processing' && progressPercent[video.id] !== undefined && (
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${progressPercent[video.id]}%` }}
+                                                        className="h-full bg-gradient-to-r from-primary to-orange-500"
+                                                    />
+                                                </div>
+                                                <span className="text-[10px] font-mono text-muted-foreground w-8">
+                                                    {progressPercent[video.id]}%
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         {video.status === 'completed' && (

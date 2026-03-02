@@ -11,10 +11,9 @@ class ClipController {
         const { videoId } = req.params;
         const fs = require('fs');
         const io = req.app.get('io');
-        const emit = (msg) => {
-            console.log(`[Process] ${msg}`);
-            io?.emit('video-progress', { videoId, message: msg });
-            io?.emit(`video-${videoId}`, { event: 'progress', message: msg });
+        const emitProgress = (step, percent, msg) => {
+            console.log(`[Process] [${percent}%] ${msg}`);
+            io?.emit('video-progress', { videoId, step, percent: Math.round(percent), message: msg });
         };
 
         try {
@@ -36,7 +35,7 @@ class ClipController {
             setImmediate(async () => {
                 try {
                     // 1. Download do vídeo
-                    emit('Baixando vídeo do YouTube...');
+                    emitProgress('DOWNLOADING', 10, 'Baixando vídeo do YouTube...');
                     const videoUrl = `https://youtube.com/watch?v=${video.youtube_video_id}`;
                     const downloadPath = path.join(__dirname, '../../uploads', `${videoId}.mp4`);
 
@@ -47,19 +46,21 @@ class ClipController {
                     await youTubeService.downloadVideo(videoUrl, downloadPath);
 
                     // 2. Transcrever com sincronia de palavras (Word-level timestamps)
-                    emit('Extraindo áudio e transcrevendo (IA)...');
+                    emitProgress('TRANSCRIBING', 20, 'Extraindo áudio e transcrevendo (IA)...');
                     const audioPath = path.join(__dirname, '../../uploads', `${videoId}.mp3`);
-                    await ffmpegService.extractAudio(downloadPath, audioPath);
+                    await ffmpegService.extractAudio(downloadPath, audioPath, (p) => {
+                        emitProgress('TRANSCRIBING', 20 + (p * 0.05), 'Extraindo áudio...');
+                    });
 
                     const transcriptionData = await aiService.transcribeWithWords(audioPath);
                     const transcription = transcriptionData.text;
 
                     // 3. Analisar momentos virais
-                    emit('Analisando momentos virais com IA...');
+                    emitProgress('AI_ANALYSIS', 30, 'Analisando momentos virais com IA...');
                     const analysis = await aiService.analyzeTranscription(transcription);
 
                     // 4. Calcular enquadramento inteligente (Smart Framing)
-                    emit('Calculando enquadramento inteligente (Face Detection)...');
+                    emitProgress('FRAMING', 40, 'Calculando enquadramento inteligente (Face Detection)...');
                     const framingData = await aiService.getSmartFraming(downloadPath);
                     const xOffset = framingData.x_offset_pct;
 
@@ -68,9 +69,14 @@ class ClipController {
                     const clipsCount = analysis.clips.length;
                     const createdClips = [];
 
+                    emitProgress('CLIPPING', 50, `Gerando ${clipsCount} clips virais...`);
+
                     for (let i = 0; i < clipsCount; i++) {
-                        emit(`Gerando clip ${i + 1} de ${clipsCount} com legendas estilo Hormozi...`);
+                        const startPercent = 50 + (i / clipsCount) * 50;
                         const clipData = analysis.clips[i];
+
+                        emitProgress('CLIPPING_PROGRESS', startPercent, `Clip ${i + 1} de ${clipsCount}: ${clipData.title}`);
+
                         const startSeconds = this.timeToSeconds(clipData.start);
                         const endSeconds = this.timeToSeconds(clipData.end);
                         const duration = endSeconds - startSeconds;
@@ -95,7 +101,12 @@ class ClipController {
                             `${videoId}_${i}`,
                             {
                                 xOffset: xOffset,
-                                subtitlesPath: assPath
+                                subtitlesPath: assPath,
+                                onProgress: (p) => {
+                                    const stagePercent = (1 / clipsCount) * 50;
+                                    const currentPercent = startPercent + (p / 100) * stagePercent;
+                                    emitProgress('CLIPPING_PROGRESS', currentPercent, `Processando clip ${i + 1}...`);
+                                }
                             }
                         );
 
@@ -134,13 +145,11 @@ class ClipController {
                     if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
 
                     io?.emit('video-progress', { videoId, status: 'done', clipsCount: createdClips.length });
-                    io?.emit(`video-${videoId}`, { event: 'done', clipsCount: createdClips.length });
 
                 } catch (backgroundError) {
                     console.error('[ProcessVideo] Background error:', backgroundError);
                     await db.updateVideoStatus(videoId, 'failed', { error_message: backgroundError.message });
                     io?.emit('video-progress', { videoId, status: 'error', message: backgroundError.message });
-                    io?.emit(`video-${videoId}`, { event: 'error', message: backgroundError.message });
                 }
             });
 

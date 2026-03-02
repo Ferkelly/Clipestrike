@@ -18,32 +18,22 @@ class FFmpegService {
 
     // Extrair clip vertical (9:16) para Shorts/TikTok
     async extractVerticalClip(inputPath, startTime, duration, outputName, options = {}) {
-        const { xOffset = 0.5, subtitlesPath = null } = options;
+        const { xOffset = 0.5, subtitlesPath = null, onProgress = null } = options;
         const outputPath = path.join(this.outputDir, `${outputName}.mp4`);
 
         return new Promise((resolve, reject) => {
             const filters = [
-                // 1. Crop dinâmico baseado no enquadramento inteligente (xOffset entre 0 e 1)
-                // Fórmula: crop=largura_alvo:altura_alvo:posicao_x:posicao_y
-                // largura_alvo = ih * 9/16
-                // posicao_x = (iw * xOffset) - (largura_alvo / 2)
                 `crop=ih*9/16:ih:min(max(0,iw*${xOffset}-ih*9/32),iw-ih*9/16):0`,
-
-                // 2. Scale para 1080x1920
                 'scale=1080:1920:flags=lanczos',
-
-                // 3. Melhorar cores/contraste
                 'eq=contrast=1.1:saturation=1.2'
             ];
 
-            // 4. Adicionar legendas se fornecidas
             if (subtitlesPath) {
-                // FFmpeg utiliza caminhos no estilo unix até no Windows para filtros de legenda
                 const escapedPath = subtitlesPath.replace(/\\/g, '/').replace(/:/g, '\\:');
                 filters.push(`subtitles='${escapedPath}'`);
             }
 
-            ffmpeg(inputPath)
+            let command = ffmpeg(inputPath)
                 .setStartTime(startTime)
                 .setDuration(duration)
                 .videoFilters(filters)
@@ -53,11 +43,20 @@ class FFmpegService {
                     '-pix_fmt yuv420p',
                     '-movflags +faststart',
                     '-preset fast',
-                    '-crf 20', // Qualidade levemente superior (20 vs 23)
+                    '-crf 20',
                     '-profile:v high',
                     '-level 4.2',
                     '-r 60'
-                ])
+                ]);
+
+            if (onProgress) {
+                command.on('progress', (progress) => {
+                    const percent = Math.min(99, Math.max(0, progress.percent || 0));
+                    onProgress(percent);
+                });
+            }
+
+            command
                 .on('start', (cmd) => {
                     console.log('Iniciando FFmpeg:', cmd);
                 })
@@ -81,7 +80,6 @@ class FFmpegService {
                 .videoFilters(`select='gt(scene,${threshold})',showinfo`)
                 .outputOptions('-f null')
                 .on('stderr', (line) => {
-                    // Parse scene changes do stderr
                     const match = line.match(/pts_time:([\d.]+)/);
                     if (match) {
                         scenes.push(parseFloat(match[1]));
@@ -96,12 +94,20 @@ class FFmpegService {
     }
 
     // Extrair áudio para análise
-    async extractAudio(inputPath, outputPath) {
+    async extractAudio(inputPath, outputPath, onProgress = null) {
         return new Promise((resolve, reject) => {
-            ffmpeg(inputPath)
+            let command = ffmpeg(inputPath)
                 .noVideo()
                 .audioCodec('libmp3lame')
-                .audioBitrate('128k')
+                .audioBitrate('128k');
+
+            if (onProgress) {
+                command.on('progress', (progress) => {
+                    onProgress(progress.percent || 0);
+                });
+            }
+
+            command
                 .on('end', () => resolve(outputPath))
                 .on('error', reject)
                 .save(outputPath);
@@ -124,10 +130,18 @@ class FFmpegService {
     }
 
     // Adicionar legendas queimadas (burn-in)
-    async addSubtitles(videoPath, subtitlesPath, outputPath) {
+    async addSubtitles(videoPath, subtitlesPath, outputPath, onProgress = null) {
         return new Promise((resolve, reject) => {
-            ffmpeg(videoPath)
-                .videoFilters(`subtitles=${subtitlesPath}:force_style='FontSize=24,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,Outline=2'`)
+            let command = ffmpeg(videoPath)
+                .videoFilters(`subtitles=${subtitlesPath}:force_style='FontSize=24,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,Outline=2'`);
+
+            if (onProgress) {
+                command.on('progress', (progress) => {
+                    onProgress(progress.percent || 0);
+                });
+            }
+
+            command
                 .on('end', () => resolve(outputPath))
                 .on('error', reject)
                 .save(outputPath);
