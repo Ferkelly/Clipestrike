@@ -5,7 +5,8 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
     if (!socket) {
-        socket = io('http://127.0.0.1:5000', { path: '/socket.io', transports: ['websocket', 'polling'] });
+        const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        socket = io(socketUrl, { path: '/socket.io', transports: ['websocket', 'polling'] });
     }
     return socket;
 };

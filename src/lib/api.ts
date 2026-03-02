@@ -1,6 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_URL
     ? `${import.meta.env.VITE_API_URL}/api`
-    : 'http://127.0.0.1:5000/api';
+    : 'http://localhost:5000/api';
 
 
 const getToken = () => localStorage.getItem('clipstrike_token');
