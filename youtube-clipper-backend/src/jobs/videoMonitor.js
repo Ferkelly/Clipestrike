@@ -1,6 +1,5 @@
 const cron = require('node-cron');
-const youTubeService = require('../services/youtubeService');
-const { db, supabase } = require('../config/database');
+const channelMonitorService = require('../services/channelMonitorService');
 
 class VideoMonitor {
     constructor() {
@@ -8,63 +7,23 @@ class VideoMonitor {
     }
 
     start() {
-        // Verificar a cada 5 minutos
+        // Verificar a cada 5 minutos (expansível conforme necessidade)
         cron.schedule('*/5 * * * *', () => {
-            this.checkForNewVideos();
+            this.runCycle();
         });
 
-        console.log('Monitor de vídeos iniciado');
+        console.log('Monitor de vídeos (Channel Monitor) iniciado');
+        // Rodar imediatamente ao iniciar
+        this.runCycle();
     }
 
-    async checkForNewVideos() {
+    async runCycle() {
         if (this.isRunning) return;
         this.isRunning = true;
-
         try {
-            const channels = await db.getAllActiveChannels();
-
-            for (const channel of channels) {
-                const lastCheck = new Date(channel.last_check || Date.now() - 86400000);
-
-                try {
-                    const newVideos = await youTubeService.getLatestVideos(
-                        channel.youtube_channel_id,
-                        lastCheck,
-                        channel.access_token
-                    );
-
-                    for (const video of newVideos) {
-                        // Verificar se já existe
-                        const exists = await db.getVideoByYoutubeId(video.id.videoId);
-
-                        if (!exists) {
-                            // Salvar novo vídeo
-                            await db.createVideo({
-                                channel_id: channel.id,
-                                youtube_video_id: video.id.videoId,
-                                title: video.snippet.title,
-                                description: video.snippet.description,
-                                thumbnail_url: video.snippet.thumbnails.high?.url,
-                                published_at: video.snippet.publishedAt,
-                                status: 'pending'
-                            });
-
-                            console.log(`Novo vídeo detectado: ${video.snippet.title}`);
-                        }
-                    }
-
-                    // Atualizar last_check
-                    await supabase
-                        .from('channels')
-                        .update({ last_check: new Date() })
-                        .eq('id', channel.id);
-
-                } catch (error) {
-                    console.error(`Erro ao verificar canal ${channel.id}:`, error);
-                }
-            }
+            await channelMonitorService.runChannelMonitor();
         } catch (error) {
-            console.error('Erro no monitor:', error);
+            console.error('Erro no ciclo do monitor:', error);
         } finally {
             this.isRunning = false;
         }

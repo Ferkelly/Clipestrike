@@ -9,6 +9,12 @@ const logger = require('../utils/logger');
  */
 const authenticate = async (req, res, next) => {
     try {
+        // Permitir requisições internas com chave secreta
+        const internalKey = req.headers['x-internal-key'];
+        if (internalKey === (process.env.INTERNAL_API_KEY || 'internal')) {
+            return next();
+        }
+
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ error: 'Token de autenticação não fornecido.' });
