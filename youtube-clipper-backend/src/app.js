@@ -66,7 +66,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Algo deu errado!' });
 });
 
-// Iniciar monitor de vídeos (Cron nativo)
-startMonitorCron();
+// O cron será iniciado no server.js após o listen
+// startMonitorCron();
 
 module.exports = { app, httpServer };
