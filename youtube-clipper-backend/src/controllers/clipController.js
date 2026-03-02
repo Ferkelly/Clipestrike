@@ -2,6 +2,7 @@ const youTubeService = require('../services/youtubeService');
 const ffmpegService = require('../services/ffmpegService');
 const aiService = require('../services/aiService');
 const socialMediaService = require('../services/socialMediaService');
+const autoPostService = require('../services/autoPostService');
 const { db, supabase } = require('../config/database');
 const path = require('path');
 
@@ -145,6 +146,9 @@ class ClipController {
                     if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
 
                     io?.emit('video-progress', { videoId, status: 'done', clipsCount: createdClips.length });
+
+                    // Disparar auto-postagem se configurada
+                    autoPostService.autoPublishReadyClips(videoId, video.channels.user_id).catch(console.error);
 
                 } catch (backgroundError) {
                     console.error('[ProcessVideo] Background error:', backgroundError);

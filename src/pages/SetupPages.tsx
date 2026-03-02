@@ -175,61 +175,167 @@ const PLATFORMS = [
 
 export function ConnectPlatformsPage() {
     const navigate = useNavigate();
-    const [connected, setConnected] = useState<Set<string>>(new Set());
+    const [subStep, setSubStep] = useState<1 | 2 | 3>(1);
+    const [username, setUsername] = useState("");
+    const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+    const [autoPost, setAutoPost] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
-    function handleConnect(platformId: string) {
-        setConnected(prev => new Set([...prev, platformId]));
+    const PLATFORMS = [
+        { id: "tiktok", icon: <Music className="h-5 w-5" />, name: "TikTok" },
+        { id: "instagram", icon: <Instagram className="h-5 w-5" />, name: "Instagram" },
+        { id: "youtube", icon: <Youtube className="h-5 w-5" />, name: "YouTube" },
+        { id: "facebook", icon: <Facebook className="h-5 w-5" />, name: "Facebook" },
+    ];
+
+    async function handleSaveConfig() {
+        setLoading(true);
+        setError("");
+        const token = localStorage.getItem("token");
+        try {
+            const res = await fetch(`${API_URL}/autopost/platforms/config`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    up_username: username,
+                    platforms: selectedPlatforms,
+                    auto_post: autoPost
+                }),
+            });
+            if (!res.ok) throw new Error("Erro ao salvar configuração");
+            navigate("/dashboard");
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     }
 
-    const canContinue = connected.size > 0;
+    const togglePlatform = (id: string) => {
+        setSelectedPlatforms(prev =>
+            prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+        );
+    };
 
     return (
         <SetupLayout
             step={2}
-            title="ONDE PUBLICAR?"
-            subtitle="Conecte as redes sociais onde você quer que seus clips sejam postados."
+            title="CONFIGURAR AUTO-POST"
+            subtitle="Conectamos ao Upload-Post.com para automatizar suas publicações em todas as redes."
         >
             <div className="glass-card rounded-2xl p-8 border-gradient mb-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                    {PLATFORMS.map(p => {
-                        const isConnected = connected.has(p.id);
-                        return (
-                            <button
-                                key={p.id}
-                                onClick={() => handleConnect(p.id)}
-                                className={`flex flex-col items-center justify-center p-6 rounded-2xl border transition-all ${isConnected
-                                        ? "border-primary bg-primary/10"
-                                        : "border-white/10 bg-white/5 hover:border-white/20"
-                                    }`}
+                {/* Step 1: External Connection */}
+                {subStep === 1 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="flex flex-col items-center text-center p-6 bg-white/5 rounded-2xl border border-white/10">
+                            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-6">
+                                <Zap className="h-8 w-8 text-primary" fill="currentColor" />
+                            </div>
+                            <h3 className="text-xl font-display mb-2">1. Conecte suas Redes</h3>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Clique no botão abaixo para abrir o Upload-Post.com e conectar suas contas (TikTok, Instagram, etc).
+                            </p>
+                            <a
+                                href="https://app.upload-post.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full"
                             >
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${isConnected ? "bg-primary text-white" : "bg-white/5 text-muted-foreground"}`}>
-                                    {p.icon}
-                                </div>
-                                <h3 className="font-display text-lg mb-1">{p.name}</h3>
-                                <p className="text-xs text-muted-foreground mb-4">{p.desc}</p>
-                                <div className={`px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest ${isConnected ? "bg-primary text-white" : "bg-white/10 text-muted-foreground"}`}>
-                                    {isConnected ? "Conectado" : "Conectar"}
-                                </div>
+                                <Button className="w-full h-14 rounded-xl bg-white text-black hover:bg-white/90 font-bold transition-all">
+                                    Abrir Upload-Post.com ↗
+                                </Button>
+                            </a>
+                        </div>
+                        <Button
+                            onClick={() => setSubStep(2)}
+                            className="w-full h-14 rounded-xl bg-gradient-primary text-white font-bold glow-effect"
+                        >
+                            Já conectei as redes →
+                        </Button>
+                    </div>
+                )}
+
+                {/* Step 2: Username Input */}
+                {subStep === 2 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="space-y-4">
+                            <h3 className="text-xl font-display text-center">2. Informe seu Usuário</h3>
+                            <div className="space-y-2">
+                                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Username do Upload-Post</label>
+                                <input
+                                    type="text"
+                                    value={username}
+                                    onChange={e => setUsername(e.target.value)}
+                                    placeholder="@seu_usuario"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-4">
+                            <Button variant="outline" onClick={() => setSubStep(1)} className="flex-1 h-14 rounded-xl border-white/10 bg-transparent hover:bg-white/5">Voltar</Button>
+                            <Button
+                                onClick={() => username.trim() && setSubStep(3)}
+                                disabled={!username.trim()}
+                                className="flex-[2] h-14 rounded-xl bg-gradient-primary text-white font-bold glow-effect"
+                            >
+                                Próximo Passo →
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 3: Platform Selection & Auto-Post Toggle */}
+                {subStep === 3 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <h3 className="text-xl font-display text-center">3. Escolha as Plataformas</h3>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            {PLATFORMS.map(p => {
+                                const isSelected = selectedPlatforms.includes(p.id);
+                                return (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => togglePlatform(p.id)}
+                                        className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${isSelected ? "bg-primary/20 border-primary" : "bg-white/5 border-white/10 grayscale opacity-60 hover:grayscale-0 hover:opacity-100"
+                                            }`}
+                                    >
+                                        <div className={isSelected ? "text-primary" : "text-muted-foreground"}>{p.icon}</div>
+                                        <span className={`text-sm font-bold ${isSelected ? "text-white" : "text-muted-foreground"}`}>{p.name}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 mt-4">
+                            <div>
+                                <div className="text-sm font-bold">Auto-Post Ativado</div>
+                                <div className="text-xs text-muted-foreground">Postar clips automaticamente após gerados</div>
+                            </div>
+                            <button
+                                onClick={() => setAutoPost(!autoPost)}
+                                className={`w-12 h-6 rounded-full p-1 transition-colors ${autoPost ? "bg-primary" : "bg-white/20"}`}
+                            >
+                                <div className={`w-4 h-4 rounded-full bg-white transition-transform ${autoPost ? "translate-x-6" : ""}`} />
                             </button>
-                        );
-                    })}
-                </div>
+                        </div>
 
-                <p className="text-center text-xs text-muted-foreground mb-4">
-                    Conecte ao menos uma plataforma para finalizar
-                </p>
+                        {error && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-4">{error}</div>}
 
-                <Button
-                    onClick={() => canContinue && navigate("/dashboard")}
-                    disabled={!canContinue}
-                    className={`w-full h-14 rounded-xl font-bold transition-all border-0 ${canContinue
-                            ? "bg-gradient-primary text-white glow-effect hover:scale-[1.01]"
-                            : "bg-white/5 text-muted-foreground cursor-not-allowed"
-                        }`}
-                >
-                    {canContinue ? "Finalizar Configuração →" : "Conecte uma plataforma"}
-                </Button>
+                        <div className="flex gap-4">
+                            <Button variant="outline" onClick={() => setSubStep(2)} className="flex-1 h-14 rounded-xl border-white/10 bg-transparent hover:bg-white/5">Voltar</Button>
+                            <Button
+                                onClick={handleSaveConfig}
+                                disabled={loading || selectedPlatforms.length === 0}
+                                className="flex-[2] h-14 rounded-xl bg-gradient-primary text-white font-bold glow-effect"
+                            >
+                                {loading ? "Salvando..." : "Finalizar e Ir ao Dashboard"}
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
         </SetupLayout>
     );
 }
+
