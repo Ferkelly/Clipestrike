@@ -1,6 +1,25 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
+import {
+    Zap,
+    Video,
+    Youtube,
+    Share2,
+    PlayCircle,
+    Plus,
+    Search,
+    Settings,
+    LogOut,
+    ChevronRight,
+    TrendingUp,
+    Clock,
+    CheckCircle2,
+    AlertCircle,
+    Instagram,
+    Facebook
+} from "lucide-react";
+import { Button } from "../components/ui/button";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -9,489 +28,301 @@ interface Channel { id: string; name: string; url: string; status: string; thumb
 interface Clip { id: string; title: string; hook: string; viral_score: number; file_url: string; status: string; created_at: string; channel_name: string; thumbnail?: string; }
 interface VideoJob { id: string; title: string; step: string; percent: number; message: string; status: string; }
 
-// ── Status badge ───────────────────────────────────────────────────────────
-function StatusBadge({ status }: { status: string }) {
-    const map: Record<string, { label: string; cls: string }> = {
-        pending: { label: "PENDENTE", cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
-        processing: { label: "PROCESSANDO", cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
-        done: { label: "CONCLUÍDO", cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-        error: { label: "ERRO", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
-        monitoring: { label: "MONITORANDO", cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-    };
-    const s = map[status] || { label: status.toUpperCase(), cls: "bg-zinc-800 text-zinc-400 border-zinc-700" };
-    return (
-        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border tracking-wider ${s.cls}`}>
-            {s.label}
-        </span>
-    );
-}
+// ── Components ────────────────────────────────────────────────────────────
 
-// ── Progress bar ───────────────────────────────────────────────────────────
-function ProgressJob({ job }: { job: VideoJob }) {
+function StatCard({ label, value, icon: Icon, color }: { label: string; value: string; icon: any; color: string }) {
     return (
-        <div className="bg-[#111] border border-white/6 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-white truncate max-w-[60%]">{job.title}</span>
-                <span className="text-xs text-orange-400 font-bold">{job.percent}%</span>
+        <div className="glass-card rounded-2xl p-6 border-white/5 hover:border-white/10 transition-all group">
+            <div className="flex items-center justify-between mb-4">
+                <div className={`p-3 rounded-xl ${color} bg-opacity-10 text-opacity-100`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+                <span className="text-xs font-mono text-muted-foreground">+12% ✨</span>
             </div>
-            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mb-3">
-                <div
-                    className="h-full bg-gradient-to-r from-red-600 to-orange-400 rounded-full transition-all duration-500"
-                    style={{ width: `${job.percent}%` }}
-                />
-            </div>
-            <p className="text-xs text-zinc-500">{job.message}</p>
+            <div className="text-2xl font-display tracking-tight text-foreground mb-1">{value}</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-widest font-mono">{label}</div>
         </div>
     );
 }
 
-// ── Clip card ──────────────────────────────────────────────────────────────
-function ClipCard({ clip }: { clip: Clip }) {
-    const scoreColor = clip.viral_score >= 90 ? "text-emerald-400" : clip.viral_score >= 70 ? "text-orange-400" : "text-zinc-400";
-    return (
-        <div className="flex gap-4 items-center bg-[#111] border border-white/6 rounded-xl p-4 hover:bg-[#161616] transition-colors group">
-            {/* Thumbnail */}
-            <div className="w-20 h-14 rounded-lg bg-zinc-900 border border-white/5 flex-shrink-0 overflow-hidden relative">
-                {clip.thumbnail ? (
-                    <img src={clip.thumbnail} alt="" className="w-full h-full object-cover" />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl opacity-30">🎬</div>
-                )}
-                {clip.viral_score && (
-                    <div className={`absolute top-1 right-1 text-[9px] font-black ${scoreColor}`}>
-                        {clip.viral_score}
-                    </div>
-                )}
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-white truncate">{clip.title}</div>
-                {clip.hook && (
-                    <div className="text-xs text-orange-400 mt-0.5 truncate">"{clip.hook}"</div>
-                )}
-                <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-xs text-zinc-600">{clip.channel_name}</span>
-                    <span className="text-zinc-700">·</span>
-                    <span className="text-xs text-zinc-600">
-                        {new Date(clip.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-                <StatusBadge status={clip.status} />
-                {clip.file_url && clip.status === "done" && (
-                    <a
-                        href={clip.file_url}
-                        download
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:bg-orange-500/20"
-                    >
-                        ↓ Download
-                    </a>
-                )}
-            </div>
-        </div>
-    );
-}
-
-// ── Channel card ───────────────────────────────────────────────────────────
-function ChannelCard({ channel, onImport }: { channel: Channel; onImport: (id: string) => void }) {
-    return (
-        <div className="bg-[#111] border border-white/6 rounded-xl p-5 hover:bg-[#161616] transition-colors">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-700 to-orange-500 flex items-center justify-center text-lg flex-shrink-0">
-                    {channel.thumbnail ? <img src={channel.thumbnail} className="w-full h-full rounded-xl object-cover" alt="" /> : "▶"}
-                </div>
-                <div className="min-w-0">
-                    <div className="text-sm font-bold text-white truncate">{channel.name}</div>
-                    <div className="text-xs text-zinc-600 truncate">{channel.url}</div>
-                </div>
-            </div>
-            <div className="flex items-center gap-2 mb-4">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs text-emerald-400">Monitorando</span>
-            </div>
-            <button
-                onClick={() => onImport(channel.id)}
-                className="w-full py-2 rounded-lg border border-white/8 text-zinc-400 text-xs font-medium hover:border-white/20 hover:text-white transition-colors flex items-center justify-center gap-2"
-            >
-                🎬 Importar Vídeos
-            </button>
-        </div>
-    );
-}
-
-// ── Main Dashboard ─────────────────────────────────────────────────────────
 export default function DashboardPage() {
     const navigate = useNavigate();
-    const [tab, setTab] = useState<"clips" | "channels" | "platforms" | "runs">("clips");
-    const [channels, setChannels] = useState<Channel[]>([]);
-    const [clips, setClips] = useState<Clip[]>([]);
-    const [jobs, setJobs] = useState<VideoJob[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [socket, setSocket] = useState<Socket | null>(null);
-    const [addVideoUrl, setAddVideoUrl] = useState("");
-    const [addingVideo, setAddingVideo] = useState(false);
+    const [activeTab, setActiveTab] = useState("clips");
+    const [url, setUrl] = useState("");
+    const [processing, setProcessing] = useState(false);
 
-    // Stats
-    const stats = {
-        channels: channels.length,
-        platforms: 0, // will come from API
-        activeRuns: jobs.filter(j => j.status === "processing").length,
+    // Mock data for UI demonstration
+    const [clips] = useState<Clip[]>([]);
+    const [channels] = useState<Channel[]>([]);
+    const [runs, setRuns] = useState<VideoJob[]>([]);
+
+    useEffect(() => {
+        const socket: Socket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000");
+
+        socket.on("video-progress", (data: VideoJob) => {
+            setRuns(prev => {
+                const index = prev.findIndex(r => r.id === data.id);
+                if (index > -1) {
+                    const newRuns = [...prev];
+                    newRuns[index] = data;
+                    return newRuns;
+                }
+                return [data, ...prev];
+            });
+        });
+
+        return () => { socket.disconnect(); };
+    }, []);
+
+    const handleProcess = async () => {
+        if (!url) return;
+        setProcessing(true);
+        // API Call logic
+        setTimeout(() => {
+            setProcessing(false);
+            setUrl("");
+        }, 2000);
     };
 
-    // Load data
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) { navigate("/login"); return; }
-        fetchData(token);
-
-        const s = io(API_URL.replace("/api", ""), { auth: { token } });
-        s.on("video-progress", (data: { videoId: string; step: string; percent: number; message: string }) => {
-            setJobs(prev => prev.map(j =>
-                j.id === data.videoId
-                    ? { ...j, step: data.step, percent: data.percent, message: data.message, status: data.percent === 100 ? "done" : "processing" }
-                    : j
-            ));
-            if (data.percent === 100) fetchData(token);
-        });
-        setSocket(s);
-        return () => { s.disconnect(); };
-    }, [navigate]);
-
-    async function fetchData(token: string) {
-        setLoading(true);
-        try {
-            const [chRes, clRes] = await Promise.all([
-                fetch(`${API_URL}/channels`, { headers: { Authorization: `Bearer ${token}` } }),
-                fetch(`${API_URL}/clips`, { headers: { Authorization: `Bearer ${token}` } }),
-            ]);
-            if (chRes.ok) setChannels(await chRes.json());
-            if (clRes.ok) setClips(await clRes.json());
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function handleAddVideo() {
-        const token = localStorage.getItem("token");
-        if (!addVideoUrl.trim() || !token) return;
-        setAddingVideo(true);
-        try {
-            const res = await fetch(`${API_URL}/videos/import`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ url: addVideoUrl }),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setJobs(prev => [...prev, {
-                    id: data.videoId,
-                    title: data.title || addVideoUrl,
-                    step: "INIT",
-                    percent: 0,
-                    message: "Iniciando processamento...",
-                    status: "processing",
-                }]);
-                setAddVideoUrl("");
-                setTab("runs");
-            }
-        } catch (e) { console.error(e); }
-        finally { setAddingVideo(false); }
-    }
-
-    async function handleImportChannel(channelId: string) {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-        await fetch(`${API_URL}/channels/${channelId}/import`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        setTab("runs");
-    }
-
-    function handleLogout() {
-        localStorage.removeItem("token");
-        navigate("/");
-    }
-
-    const tabs = [
-        { key: "clips", label: "Meus Clips", count: clips.length },
-        { key: "channels", label: "Canais", count: channels.length },
-        { key: "platforms", label: "Plataformas", count: null },
-        { key: "runs", label: "Agent Runs", count: jobs.filter(j => j.status === "processing").length || null },
-    ] as const;
+    const menuItems = [
+        { id: "clips", label: "Meus Clips", icon: Video },
+        { id: "channels", label: "Canais", icon: Youtube },
+        { id: "platforms", label: "Plataformas", icon: Share2 },
+        { id: "runs", label: "Agent Runs", icon: PlayCircle },
+    ];
 
     return (
-        <div className="min-h-screen bg-[#080808] text-white font-sans">
-
-            {/* ── DASH NAV ── */}
-            <nav className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-8 bg-[#080808]/90 backdrop-blur-xl border-b border-white/5">
-                <div
-                    className="flex items-center gap-2.5 cursor-pointer"
-                    onClick={() => navigate("/")}
-                >
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center text-sm font-bold">⚡</div>
-                    <span className="font-black text-xl tracking-tight">Clip<span className="text-orange-500">Strike</span></span>
-                </div>
-                <div className="hidden md:flex gap-6 text-sm text-zinc-500">
-                    <span className="hover:text-white cursor-pointer transition-colors">Funcionalidades</span>
-                    <span className="hover:text-white cursor-pointer transition-colors">Como Funciona</span>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center font-bold text-sm cursor-pointer" title="Perfil">
-                        A
+        <div className="min-h-screen bg-background text-foreground font-sans flex overflow-hidden">
+            {/* Sidebar */}
+            <aside className="w-64 border-r border-white/5 flex flex-col bg-background relative z-20">
+                <div className="p-8 pb-4">
+                    <div className="flex items-center gap-2 mb-10 cursor-pointer" onClick={() => navigate("/")}>
+                        <Zap className="h-6 w-6 text-primary animate-flicker" fill="currentColor" />
+                        <span className="font-display text-2xl tracking-wider pt-1">CLIPSTRIKE</span>
                     </div>
+
+                    <nav className="space-y-1">
+                        {menuItems.map(item => (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveTab(item.id)}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === item.id
+                                    ? "bg-gradient-primary text-white shadow-lg shadow-primary/20"
+                                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                                    }`}
+                            >
+                                <item.icon className="h-4 w-4" />
+                                {item.label}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
+
+                <div className="mt-auto p-8 pt-4 border-t border-white/5">
+                    <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground w-full transition-all">
+                        <Settings className="h-4 w-4" />
+                        Configurações
+                    </button>
                     <button
-                        onClick={handleLogout}
-                        className="text-zinc-600 hover:text-white transition-colors text-sm"
+                        onClick={() => { localStorage.removeItem("token"); navigate("/login"); }}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 w-full transition-all"
                     >
+                        <LogOut className="h-4 w-4" />
                         Sair
                     </button>
                 </div>
-            </nav>
+            </aside>
 
-            {/* ── BODY ── */}
-            <div className="pt-24 pb-20 px-6 max-w-6xl mx-auto">
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto relative z-10">
+                {/* Background Hint */}
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10" />
 
-                {/* Header */}
-                <div className="flex flex-wrap items-start justify-between gap-5 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-                            <span className="text-2xl">👤</span> Seu Dashboard
-                        </h1>
-                        <p className="text-zinc-500 text-sm mt-1">Monitore seus canais e clips em tempo real</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2.5">
-                        <button
-                            onClick={() => navigate("/setup/platforms")}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-red-600 to-orange-500 hover:opacity-90 transition-opacity"
-                        >
-                            + Conectar Plataformas
-                        </button>
-                        <button
-                            onClick={() => { setTab("runs"); }}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm border border-white/10 text-zinc-300 hover:border-white/20 hover:text-white transition-colors"
-                        >
-                            🔗 Adicionar Vídeo
-                        </button>
-                        <button
-                            onClick={() => fetchData(localStorage.getItem("token") || "")}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm border border-white/10 text-zinc-400 hover:border-white/20 hover:text-white transition-colors"
-                        >
-                            ↻ Atualizar
-                        </button>
-                    </div>
-                </div>
+                <header className="h-20 border-b border-white/5 flex items-center justify-between px-10 sticky top-0 bg-background/80 backdrop-blur-md z-30">
+                    <h2 className="text-2xl font-display uppercase tracking-wider">{menuItems.find(m => m.id === activeTab)?.label}</h2>
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-3 mb-8">
-                    {[
-                        { icon: "📺", value: stats.channels, label: "Canais Conectados", color: "blue" },
-                        { icon: "🎵", value: stats.platforms, label: "Plataformas Conectadas", color: "green" },
-                        { icon: "⚙️", value: stats.activeRuns, label: "Runs Ativas", color: "yellow" },
-                    ].map((s) => (
-                        <div key={s.label} className="bg-[#111] border border-white/6 rounded-xl p-6 flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${s.color === "blue" ? "bg-blue-500/10" : s.color === "green" ? "bg-emerald-500/10" : "bg-yellow-500/10"
-                                }`}>
-                                {s.icon}
-                            </div>
-                            <div>
-                                <div className="text-3xl font-black text-white">{s.value}</div>
-                                <div className="text-xs text-zinc-500 mt-0.5">{s.label}</div>
-                            </div>
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Buscar clips..."
+                                className="bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-2 text-xs focus:outline-none focus:border-primary/50 w-64 transition-all"
+                            />
                         </div>
-                    ))}
-                </div>
-
-                {/* Tabs */}
-                <div className="flex gap-1 p-1 bg-[#111] border border-white/6 rounded-xl w-fit mb-6">
-                    {tabs.map((t) => (
-                        <button
-                            key={t.key}
-                            onClick={() => setTab(t.key)}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${tab === t.key
-                                    ? "bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-lg"
-                                    : "text-zinc-500 hover:text-white"
-                                }`}
-                        >
-                            {t.label}
-                            {t.count != null && t.count > 0 && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${tab === t.key ? "bg-white/20 text-white" : "bg-white/8 text-zinc-400"
-                                    }`}>
-                                    {t.count}
-                                </span>
-                            )}
-                        </button>
-                    ))}
-                </div>
-
-                {/* ── CLIPS TAB ── */}
-                {tab === "clips" && (
-                    <div>
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-bold text-white">Meus Clips</h2>
-                            <button
-                                onClick={() => fetchData(localStorage.getItem("token") || "")}
-                                className="text-xs px-3 py-1.5 rounded-lg border border-white/8 text-zinc-500 hover:text-white hover:border-white/20 transition-colors"
-                            >
-                                ↻ Refresh
-                            </button>
+                        <div className="w-10 h-10 rounded-full bg-gradient-primary p-[1px] glow-effect">
+                            <div className="w-full h-full rounded-full bg-background flex items-center justify-center font-bold text-xs">JD</div>
                         </div>
-                        {loading ? (
-                            <div className="space-y-3">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="h-20 rounded-xl bg-white/3 animate-pulse" />
-                                ))}
-                            </div>
-                        ) : clips.length === 0 ? (
-                            <div className="text-center py-20 text-zinc-600">
-                                <div className="text-5xl mb-4 opacity-30">🎬</div>
-                                <p className="font-semibold text-zinc-500">Nenhum clip ainda</p>
-                                <p className="text-sm mt-2">Importe um vídeo para começar</p>
-                                <button
-                                    onClick={() => setTab("runs")}
-                                    className="mt-6 px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 text-sm font-semibold hover:opacity-90 transition-opacity"
-                                >
-                                    + Adicionar Vídeo
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {clips.map(clip => <ClipCard key={clip.id} clip={clip} />)}
-                            </div>
-                        )}
                     </div>
-                )}
+                </header>
 
-                {/* ── CHANNELS TAB ── */}
-                {tab === "channels" && (
-                    <div>
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-bold text-white">Canais Conectados</h2>
-                            <button
-                                onClick={() => navigate("/setup/channel")}
-                                className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-600 to-orange-500 text-white font-semibold hover:opacity-90 transition-opacity"
-                            >
-                                + Adicionar Canal
-                            </button>
-                        </div>
-                        {channels.length === 0 ? (
-                            <div className="text-center py-20">
-                                <div className="text-5xl mb-4 opacity-30">📺</div>
-                                <p className="text-zinc-500 font-semibold">Nenhum canal conectado</p>
-                                <button
-                                    onClick={() => navigate("/setup/channel")}
-                                    className="mt-6 px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 text-sm font-semibold hover:opacity-90 transition-opacity"
-                                >
-                                    Conectar Primeiro Canal
-                                </button>
+                <div className="p-10">
+                    {/* Dashboard Home - Stats */}
+                    {activeTab === "clips" && (
+                        <div className="space-y-10">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <StatCard label="Clips Gerados" value="1,284" icon={Video} color="text-primary" />
+                                <StatCard label="Visualizações" value="84.2K" icon={TrendingUp} color="text-emerald-500" />
+                                <StatCard label="Horas Salvas" value="156h" icon={Clock} color="text-amber-500" />
+                                <StatCard label="Score Viral" value="92%" icon={Zap} color="text-indigo-500" />
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                {channels.map(ch => (
-                                    <ChannelCard key={ch.id} channel={ch} onImport={handleImportChannel} />
-                                ))}
-                                <div
-                                    onClick={() => navigate("/setup/channel")}
-                                    className="border border-dashed border-white/10 rounded-xl p-5 flex items-center justify-center cursor-pointer hover:border-orange-500/30 hover:bg-orange-500/3 transition-all min-h-[150px]"
-                                >
-                                    <div className="text-center">
-                                        <div className="text-2xl mb-2 opacity-40">+</div>
-                                        <div className="text-xs text-zinc-600 hover:text-zinc-400">Adicionar Canal</div>
+
+                            {/* Action Section */}
+                            <div className="glass-card rounded-3xl p-10 border-gradient">
+                                <div className="max-w-2xl">
+                                    <h3 className="text-3xl font-display mb-4">CRIE CLIPS AGORA</h3>
+                                    <p className="text-muted-foreground mb-8">Cole a URL de um vídeo do YouTube para que nossa IA comece a mágica.</p>
+
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="text"
+                                            value={url}
+                                            onChange={e => setUrl(e.target.value)}
+                                            placeholder="https://youtube.com/watch?v=..."
+                                            className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 transition-all"
+                                        />
+                                        <Button
+                                            onClick={handleProcess}
+                                            disabled={processing || !url}
+                                            className="h-14 px-10 rounded-2xl bg-gradient-primary text-white font-bold glow-effect hover:scale-105 transition-transform border-0"
+                                        >
+                                            {processing ? "Iniciando..." : "Processar Vídeo"}
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
-                        )}
-                    </div>
-                )}
 
-                {/* ── PLATFORMS TAB ── */}
-                {tab === "platforms" && (
-                    <div>
-                        <h2 className="font-bold text-white mb-4">Plataformas de Destino</h2>
-                        <div className="space-y-3">
-                            {[
-                                { icon: "📺", name: "YouTube Shorts", desc: "Publicar clips como YouTube Shorts", connected: false },
-                                { icon: "🎵", name: "TikTok", desc: "Publicar clips na sua conta TikTok", connected: false },
-                                { icon: "📸", name: "Instagram Reels", desc: "Publicar clips como Instagram Reels", connected: false },
-                                { icon: "👤", name: "Facebook", desc: "Publicar clips na sua página Facebook", connected: false },
-                            ].map((p) => (
-                                <div key={p.name} className="flex items-center justify-between bg-[#111] border border-white/6 rounded-xl p-5">
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-2xl">{p.icon}</span>
-                                        <div>
-                                            <div className="font-semibold text-sm text-white">{p.name}</div>
-                                            <div className="text-xs text-zinc-500 mt-0.5">{p.desc}</div>
+                            {/* Content Grid (Placeholder) */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {clips.length > 0 ? (
+                                    clips.map(clip => (
+                                        <div key={clip.id} className="glass-card rounded-2xl overflow-hidden border-white/5 hover:border-white/10 transition-all">
+                                            <div className="aspect-video bg-white/5 relative group">
+                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                                                    <PlayCircle className="h-12 w-12 text-white" />
+                                                </div>
+                                            </div>
+                                            <div className="p-5">
+                                                <div className="text-xs text-primary font-mono mb-2">SCORE: {clip.viral_score}%</div>
+                                                <h4 className="font-bold text-sm mb-4 line-clamp-1">{clip.title}</h4>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] text-muted-foreground uppercase">{clip.channel_name}</span>
+                                                    <Button size="sm" variant="ghost" className="h-8 text-xs hover:text-primary">Download</Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="col-span-3 py-20 text-center glass-card rounded-2xl border-dashed border-white/10">
+                                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
+                                            <Video className="h-8 w-8 text-muted-foreground" />
+                                        </div>
+                                        <p className="text-muted-foreground font-medium">Nenhum clip gerado ainda.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Runs Section */}
+                    {activeTab === "runs" && (
+                        <div className="space-y-6">
+                            {runs.map(run => (
+                                <div key={run.id} className="glass-card rounded-2xl p-6 border-white/5">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                                <PlayCircle className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-sm">{run.title}</h4>
+                                                <p className="text-xs text-muted-foreground">{run.message}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-lg font-display text-primary">{run.percent}%</div>
+                                            <div className="text-[10px] font-mono uppercase text-muted-foreground">{run.step}</div>
                                         </div>
                                     </div>
-                                    {p.connected ? (
-                                        <span className="flex items-center gap-2 text-emerald-400 text-xs font-semibold">
-                                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Conectado
-                                        </span>
-                                    ) : (
-                                        <button
-                                            onClick={() => navigate("/setup/platforms")}
-                                            className="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-orange-500 text-white font-semibold hover:opacity-90 transition-opacity"
-                                        >
-                                            🔗 Conectar
-                                        </button>
-                                    )}
+
+                                    {/* Progress Bar */}
+                                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-primary transition-all duration-500 ease-out"
+                                            style={{ width: `${run.percent}%` }}
+                                        />
+                                    </div>
+
+                                    <div className="mt-4 flex items-center gap-4 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${run.status === "processing" ? "bg-primary" : "bg-emerald-500"}`} />
+                                            {run.status === "processing" ? "Processando" : "Finalizado"}
+                                        </div>
+                                        <div>Started 2m ago</div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {runs.length === 0 && (
+                                <div className="py-20 text-center glass-card rounded-2xl border-dashed border-white/10">
+                                    <p className="text-muted-foreground font-medium">Nenhuma tarefa ativa no momento.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Platforms Section */}
+                    {activeTab === "platforms" && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {[
+                                { name: "YouTube", icon: Youtube, connected: true, color: "hover:border-red-500/50" },
+                                { name: "TikTok", icon: Music, connected: false, color: "hover:border-cyan-500/50" },
+                                { name: "Instagram", icon: Instagram, connected: false, color: "hover:border-pink-500/50" },
+                                { name: "Facebook", icon: Facebook, connected: false, color: "hover:border-blue-500/50" },
+                            ].map(p => (
+                                <div key={p.name} className={`glass-card rounded-2xl p-8 border-white/5 transition-all ${p.color}`}>
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
+                                                <p.icon className="h-6 w-6" />
+                                            </div>
+                                            <h4 className="text-xl font-display">{p.name}</h4>
+                                        </div>
+                                        {p.connected ? (
+                                            <span className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full uppercase">
+                                                Conectado
+                                            </span>
+                                        ) : (
+                                            <Button size="sm" className="bg-white/5 text-xs border-0 hover:bg-primary hover:text-white transition-all">Conectar</Button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mb-0">Postagens automáticas ativadas para clips virais.</p>
                                 </div>
                             ))}
                         </div>
-                    </div>
-                )}
-
-                {/* ── RUNS TAB ── */}
-                {tab === "runs" && (
-                    <div>
-                        <h2 className="font-bold text-white mb-4">Processar Vídeo</h2>
-
-                        {/* Add video */}
-                        <div className="bg-[#111] border border-white/6 rounded-xl p-5 mb-6">
-                            <label className="block text-sm font-medium text-zinc-300 mb-2">URL do Vídeo do YouTube</label>
-                            <div className="flex gap-3">
-                                <input
-                                    type="text"
-                                    value={addVideoUrl}
-                                    onChange={e => setAddVideoUrl(e.target.value)}
-                                    onKeyDown={e => e.key === "Enter" && handleAddVideo()}
-                                    placeholder="https://youtube.com/watch?v=..."
-                                    className="flex-1 bg-[#0d0d0d] border border-white/8 rounded-xl px-4 py-3 text-white text-sm placeholder-zinc-600 outline-none focus:border-orange-500/40 transition-colors"
-                                />
-                                <button
-                                    onClick={handleAddVideo}
-                                    disabled={addingVideo || !addVideoUrl.trim()}
-                                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-                                >
-                                    {addingVideo ? "Enviando..." : "⚡ Processar"}
-                                </button>
-                            </div>
-                            <p className="text-xs text-zinc-600 mt-2">
-                                O vídeo será baixado, transcrito e cortado automaticamente em clips virais.
-                            </p>
-                        </div>
-
-                        {/* Active jobs */}
-                        {jobs.length === 0 ? (
-                            <div className="text-center py-20 text-zinc-600">
-                                <div className="text-5xl mb-4 opacity-20">⚙️</div>
-                                <p className="text-zinc-500">Nenhum processamento ativo</p>
-                                <p className="text-xs mt-2">Cole uma URL acima para processar um vídeo</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {jobs.map(job => <ProgressJob key={job.id} job={job} />)}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            </main>
         </div>
+    );
+}
+
+// Mock icon for Music (TikTok)
+function Music(props: any) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
+        </svg>
     );
 }
