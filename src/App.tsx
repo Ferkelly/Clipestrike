@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
-import { DashboardPage } from "./pages/DashboardPage";
+import DashboardPage from "./pages/DashboardPage";
 import { ProcessPage } from "./pages/ProcessPage";
 import LandingPage from "./pages/LandingPage";
 import { useAuth } from "./hooks/useAuth";
@@ -32,6 +32,8 @@ export default function App() {
         <Route path="/auth/success" element={<AuthSuccess />} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/channel/:channelId" element={<ProtectedRoute><ProcessPage /></ProtectedRoute>} />
+        <Route path="/setup/platforms" element={<ProtectedRoute><div className="pt-20 text-center">Configurar Plataformas (Em breve)</div></ProtectedRoute>} />
+        <Route path="/setup/channel" element={<ProtectedRoute><div className="pt-20 text-center">Adicionar Canal (Em breve)</div></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
