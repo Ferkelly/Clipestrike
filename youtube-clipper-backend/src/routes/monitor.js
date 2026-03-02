@@ -16,16 +16,16 @@ router.get("/status", authenticate, async (req, res) => {
     try {
         const { data: channels, error } = await supabase
             .from("channels")
-            .select("id, name, status, last_check, last_video_id, last_error, is_active")
-            .order("last_check", { ascending: false });
+            .select("id, name, status, last_checked_at, last_video_id, last_error, is_active")
+            .order("last_checked_at", { ascending: false });
 
         if (error) throw error;
 
         const summary = {
             total: channels?.length || 0,
-            monitoring: channels?.filter(c => c.is_active && c.status === "monitoring").length || 0,
+            monitoring: channels?.filter(c => c.status === "monitoring" || c.is_active).length || 0,
             error: channels?.filter(c => c.status === "error").length || 0,
-            paused: channels?.filter(c => !c.is_active).length || 0,
+            paused: channels?.filter(c => c.status === "paused" || !c.is_active).length || 0,
             interval: `${process.env.MONITOR_INTERVAL_MINUTES || 15} minutos`,
             channels: channels || [],
         };
@@ -40,20 +40,15 @@ router.get("/status", authenticate, async (req, res) => {
 // Dispara o monitor manualmente (todos os canais)
 router.post("/trigger", authenticate, async (req, res) => {
     console.log(`[API] Monitor disparado manualmente por usuário ${req.user.id}`);
-
-    // Roda em background, não bloqueia a resposta
     channelMonitorService.runChannelMonitor().catch(err => {
         console.error('[Monitor] Erro em execução manual disparada via API:', err);
     });
-
     res.json({ message: "Monitor disparado. Verificando canais em background..." });
 });
 
 // ── POST /api/monitor/trigger/:channelId ──────────────────────────────────
-// Dispara o monitor para um canal específico
 router.post("/trigger/:channelId", authenticate, async (req, res) => {
     const { channelId } = req.params;
-
     try {
         const { data: channel, error } = await supabase
             .from("channels")
@@ -65,9 +60,6 @@ router.post("/trigger/:channelId", authenticate, async (req, res) => {
             return res.status(404).json({ error: "Canal não encontrado" });
         }
 
-        console.log(`[API] Verificação manual do canal "${channel.name}" disparada por usuário ${req.user.id}`);
-
-        // Roda em background
         channelMonitorService.checkChannel(channel).catch(err => {
             console.error(`[Monitor] Erro ao verificar canal ${channelId} manualmente:`, err);
         });
@@ -79,7 +71,6 @@ router.post("/trigger/:channelId", authenticate, async (req, res) => {
 });
 
 // ── PUT /api/monitor/channel/:channelId/pause ─────────────────────────────
-// Pausa o monitoramento de um canal
 router.put("/channel/:channelId/pause", authenticate, async (req, res) => {
     const { channelId } = req.params;
     try {
@@ -96,7 +87,6 @@ router.put("/channel/:channelId/pause", authenticate, async (req, res) => {
 });
 
 // ── PUT /api/monitor/channel/:channelId/resume ────────────────────────────
-// Retoma o monitoramento de um canal pausado
 router.put("/channel/:channelId/resume", authenticate, async (req, res) => {
     const { channelId } = req.params;
     try {

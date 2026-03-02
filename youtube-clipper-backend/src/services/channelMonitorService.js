@@ -23,7 +23,7 @@ class ChannelMonitorService {
     }
 
     // ── Dispara o pipeline de processamento via API interna ───────────────────
-    async triggerProcessing(youtubeVideoId, userId, title, thumbnail) {
+    async triggerProcessing(youtubeVideoId, userId, channelId, title, thumbnail) {
         console.log(`[Monitor] 🚀 Disparando pipeline para: "${title}"`);
 
         try {
@@ -32,6 +32,7 @@ class ChannelMonitorService {
                 .from("videos")
                 .insert({
                     user_id: userId,
+                    channel_id: channelId,
                     youtube_video_id: youtubeVideoId,
                     title,
                     thumbnail_url: thumbnail,
@@ -47,7 +48,6 @@ class ChannelMonitorService {
             }
 
             // Chama a rota de processamento existente no backend
-            // Usamos a rota POST /api/videos/:id/process
             const res = await axios.post(`${API_BASE}/api/videos/${video.id}/process`,
                 {
                     youtubeVideoId: youtubeVideoId,
@@ -76,41 +76,38 @@ class ChannelMonitorService {
 
         try {
             // Busca vídeos publicados depois do último check
-            // Se não tiver last_check, olha as últimas 24h
-            const publishedAfter = channel.last_check
-                ? new Date(channel.last_check)
+            const publishedAfter = channel.last_checked_at
+                ? new Date(channel.last_checked_at)
                 : new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-            // Usamos o youtubeService que já tem otimização de RSS (custo 0)
             const videos = await youtubeService.getLatestVideos(channel.youtube_channel_id, publishedAfter);
 
             if (!videos || videos.length === 0) {
                 console.log(`[Monitor] ☕ Sem novos vídeos para ${channel.name}`);
             } else {
-                // O getLatestVideos retorna o formato { id: { videoId }, snippet: { title, thumbnails: { high: { url } } } }
                 for (const videoData of videos) {
                     const videoId = videoData.id.videoId;
                     const title = videoData.snippet.title;
                     const thumbnail = videoData.snippet.thumbnails?.high?.url;
 
-                    // Pula se já foi importado
                     if (await this.videoAlreadyImported(videoId)) {
                         console.log(`[Monitor] ⏭ Vídeo já importado: ${title}`);
                         continue;
                     }
 
                     console.log(`[Monitor] 🆕 Novo vídeo detectado: "${title}"`);
-                    await this.triggerProcessing(videoId, channel.user_id, title, thumbnail);
+                    await this.triggerProcessing(videoId, channel.user_id, channel.id, title, thumbnail);
                     newVideosFound++;
                 }
             }
 
-            // Atualiza last_check
+            // Atualiza last_checked_at e status
             await supabase
                 .from("channels")
                 .update({
-                    last_check: new Date().toISOString(),
+                    last_checked_at: new Date().toISOString(),
                     status: "monitoring",
+                    last_error: null
                 })
                 .eq("id", channel.id);
 
@@ -133,11 +130,12 @@ class ChannelMonitorService {
 
         try {
             // Busca todos os canais ativos no Supabase
+            // is_active é o campo antigo, status: 'monitoring' é o novo
             const { data: channels, error } = await supabase
                 .from("channels")
                 .select("*")
-                .eq("is_active", true)
-                .order("last_check", { ascending: true, nullsFirst: true });
+                .or('status.eq.monitoring,is_active.eq.true')
+                .order("last_checked_at", { ascending: true, nullsFirst: true });
 
             if (error) throw error;
             if (!channels || channels.length === 0) {
@@ -151,7 +149,6 @@ class ChannelMonitorService {
             for (const channel of channels) {
                 const found = await this.checkChannel(channel);
                 totalNew += found;
-                // Delay entre canais para respeitar rate limit e evitar picos
                 await new Promise(r => setTimeout(r, 2000));
             }
 
