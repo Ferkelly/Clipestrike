@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { LoginPage } from "./pages/LoginPage";
+import { LoginPage, SignupPage } from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import { ProcessPage } from "./pages/ProcessPage";
 import LandingPage from "./pages/LandingPage";
@@ -29,6 +29,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
         <Route path="/auth/success" element={<AuthSuccess />} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/channel/:channelId" element={<ProtectedRoute><ProcessPage /></ProtectedRoute>} />
