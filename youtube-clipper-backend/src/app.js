@@ -10,7 +10,7 @@ const channelRoutes = require('./routes/channels');
 const videoRoutes = require('./routes/videos');
 const clipRoutes = require('./routes/clips');
 
-const videoMonitor = require('./jobs/videoMonitor');
+const { startMonitorCron } = require('./jobs/monitorCron');
 
 const app = express();
 const httpServer = createServer(app);
@@ -64,7 +64,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Algo deu errado!' });
 });
 
-// Iniciar monitor de vídeos
-videoMonitor.start();
+// Iniciar monitor de vídeos (Cron nativo)
+startMonitorCron();
 
 module.exports = { app, httpServer };
