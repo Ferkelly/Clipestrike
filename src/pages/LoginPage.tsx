@@ -7,7 +7,7 @@ type Tab = 'login' | 'register';
 
 const API_BASE = import.meta.env.VITE_API_URL
     ? `${import.meta.env.VITE_API_URL}/api`
-    : 'http://localhost:5000/api';
+    : 'http://127.0.0.1:5000/api';
 
 export function LoginPage() {
     const { login } = useAuth();
@@ -25,8 +25,8 @@ export function LoginPage() {
         setError('');
         setLoading(true);
 
+        const path = tab === 'login' ? '/auth/login' : '/auth/register';
         try {
-            const path = tab === 'login' ? '/auth/login' : '/auth/register';
             const body: Record<string, string> = { email, password };
             if (tab === 'register') body.name = name;
 
@@ -49,9 +49,13 @@ export function LoginPage() {
 
             localStorage.setItem('clipstrike_token', data.token);
             window.location.href = '/dashboard';
-        } catch (err) {
-            console.error("Network/Fetch Error:", err);
-            setError('Erro de conexão com o servidor. Verifique se o backend está rodando na porta 5000.');
+        } catch (err: any) {
+            console.error("Network/Fetch Error Details:", {
+                message: err.message,
+                url: `${API_BASE}${path}`,
+                error: err
+            });
+            setError(`Erro de conexão com o servidor. Verifique se o backend está rodando em ${API_BASE}.`);
             setLoading(false);
         }
     };

@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiGet } from '../lib/api';
+import { getSocket } from '../lib/socket';
+
+const API_BASE = import.meta.env.VITE_API_URL
+    ? `${import.meta.env.VITE_API_URL}/api`
+    : 'http://127.0.0.1:5000/api';
 
 const TOKEN_KEY = 'clipstrike_token';
 
@@ -33,7 +38,7 @@ export const useAuth = () => {
     }, []);
 
     const login = useCallback(() => {
-        window.location.href = '/api/auth/google';
+        window.location.href = `${API_BASE}/auth/google`;
     }, []);
 
     const logout = useCallback(() => {
