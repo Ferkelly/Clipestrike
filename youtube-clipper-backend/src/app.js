@@ -14,6 +14,8 @@ const autoPostRoutes = require('./routes/autoPost');
 const userRoutes = require('./routes/user');
 const platformRoutes = require('./routes/platform');
 const webhookRoutes = require('./routes/webhookRoutes');
+const analyticsRoutes = require('./routes/analytics');
+const downloadRoutes = require('./routes/downloadRoutes');
 const { notifier } = require('./services/webhookService');
 
 const { startMonitorCron } = require('./jobs/monitorCron');
@@ -93,6 +95,8 @@ app.use('/api/autopost', autoPostRoutes);
 app.use('/api/platforms', platformRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/webhook', webhookRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/download', downloadRoutes);
 
 // Health check (Ambas as rotas para evitar erro 404)
 app.get('/health', (req, res) => {

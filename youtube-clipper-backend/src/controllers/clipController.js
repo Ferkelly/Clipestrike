@@ -3,6 +3,7 @@ const ffmpegService = require('../services/ffmpegService');
 const aiService = require('../services/aiService');
 const socialMediaService = require('../services/socialMediaService');
 const autoPostService = require('../services/autoPostService');
+const videoEditingService = require('../services/videoEditingService');
 const { db, supabase } = require('../config/database');
 const path = require('path');
 
@@ -195,25 +196,38 @@ class ClipController {
                 const assPath = path.join(__dirname, '../../uploads', `${videoId}_${i}.ass`);
                 subtitleGenerator.generateAss(clipWords, assPath);
 
-                const clipPath = await ffmpegService.extractVerticalClip(
+                // 1. Extração base (9:16 + Crop + Scale) - Sem legendas ainda
+                const rawClipPath = await ffmpegService.extractVerticalClip(
                     downloadPath,
                     startSeconds,
                     duration,
-                    `${videoId}_${i}`,
-                    {
-                        xOffset: xOffset,
-                        subtitlesPath: assPath,
-                        onProgress: (p) => {
-                            const stagePercent = (1 / clipsCount) * 15;
-                            const currentPercent = startPercent + (p / 100) * stagePercent;
-                            emitProgress('CLIPPING_PROGRESS', currentPercent, `Processando clip ${i + 1}...`);
-                            if (p > 80) emitProgress('SUBTITLES', 90, `Adicionando legendas...`);
-                        }
+                    `${videoId}_${i}_raw`,
+                    { xOffset: xOffset, subtitlesPath: null }
+                );
+
+                // 2. Edições Avançadas (Silêncio, Zoom, B-Roll)
+                emitProgress('ADVANCED_EDIT', 75 + (i / clipsCount) * 10, `Clip ${i + 1}: Aplicando edições avançadas...`);
+                const editResult = await videoEditingService.applyAdvancedEditing(
+                    rawClipPath,
+                    duration,
+                    clipWords
+                );
+
+                // 3. Queimar Legendas no clip já editado
+                const finalClipPath = path.join(__dirname, '../../uploads', `${videoId}_${i}_final.mp4`);
+                await ffmpegService.addSubtitles(
+                    editResult.path,
+                    assPath,
+                    finalClipPath,
+                    (p) => {
+                        const stagePercent = (1 / clipsCount) * 5;
+                        const currentPercent = 85 + (i / clipsCount) * 5 + (p / 100) * stagePercent;
+                        emitProgress('SUBTITLES', currentPercent, `Clip ${i + 1}: Adicionando legendas...`);
                     }
                 );
 
                 const fileName = `${videoId}_${i}_${Date.now()}.mp4`;
-                const fileBuffer = fs.readFileSync(clipPath);
+                const fileBuffer = fs.readFileSync(finalClipPath);
 
                 await db.uploadFile('clips', fileName, fileBuffer);
                 const publicUrl = await db.getPublicUrl('clips', fileName);
@@ -233,8 +247,12 @@ class ClipController {
 
                 createdClips.push(clip);
 
-                if (fs.existsSync(clipPath)) fs.unlinkSync(clipPath);
-                if (fs.existsSync(assPath)) fs.unlinkSync(assPath);
+                // Limpeza de arquivos temporários do clip
+                [rawClipPath, finalClipPath, assPath, ...editResult.tempFiles].forEach(f => {
+                    if (f && fs.existsSync(f)) {
+                        try { fs.unlinkSync(f); } catch (_) { }
+                    }
+                });
             }
 
             // Finalizar
@@ -326,7 +344,7 @@ class ClipController {
 
     // Atualizar título/descrição de um clip
     async updateClip(req, res) {
-        const { title, description } = req.body;
+        const { title, description, edit_silence_cut, edit_zoom, edit_broll } = req.body;
         const { clipId } = req.params;
 
         try {
@@ -335,6 +353,9 @@ class ClipController {
                 .update({
                     title,
                     description,
+                    edit_silence_cut,
+                    edit_zoom,
+                    edit_broll,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', clipId)

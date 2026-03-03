@@ -20,7 +20,9 @@ import {
     CreditCard,
     MoreVertical,
     Calendar,
-    User
+    User,
+    BarChart3,
+    Loader2
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 
@@ -42,6 +44,7 @@ import { EditClipModal } from "../components/EditClipModal";
 
 interface Clip {
     id: string;
+    video_id: string;
     title: string;
     hook: string;
     viral_score: number;
@@ -52,6 +55,7 @@ interface Clip {
     thumbnail?: string;
     post_status?: string;
     post_results?: any;
+    videos?: { id: string; title: string };
 }
 
 interface VideoJob {
@@ -89,6 +93,7 @@ export default function DashboardPage() {
     const tabs = [
         { id: 'channels', label: 'Canais', icon: Youtube },
         { id: 'platforms', label: 'Plataformas', icon: Share2 },
+        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
         { id: 'runs', label: 'Execuções', icon: PlayCircle },
         { id: 'clips', label: 'Meus Clipes', icon: Video },
     ];
@@ -98,6 +103,7 @@ export default function DashboardPage() {
         if (path === 'dashboard' || !path) return 'clips';
         if (path === 'canais') return 'channels';
         if (path === 'plataformas') return 'platforms';
+        if (path === 'analytics') return 'analytics';
         if (path === 'runs') return 'runs';
         return 'clips';
     }, [location.pathname]);
@@ -106,6 +112,7 @@ export default function DashboardPage() {
         if (tab === 'clips') navigate('/app/dashboard');
         else if (tab === 'channels') navigate('/app/dashboard/canais');
         else if (tab === 'platforms') navigate('/app/dashboard/plataformas');
+        else if (tab === 'analytics') navigate('/app/dashboard/analytics');
         else if (tab === 'runs') navigate('/app/dashboard/runs');
         else navigate(`/app/dashboard/${tab}`);
     };
@@ -128,6 +135,9 @@ export default function DashboardPage() {
     }>({ configured: false, enabledPlatforms: [] });
     const [directConnections, setDirectConnections] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(true);
+    const [downloadingClipId, setDownloadingClipId] = useState<string | null>(null);
+    const [openDownloadMenu, setOpenDownloadMenu] = useState<string | null>(null);
+    const [zipQuality, setZipQuality] = useState<"1080" | "720">("1080");
 
     // ── Upload-Post Modal ────────────────────────────────────────────────────
     const [showPlatformModal, setShowPlatformModal] = useState(false);
@@ -208,6 +218,80 @@ export default function DashboardPage() {
             console.error("Erro ao buscar clips:", err);
         }
     };
+
+    const handleDownload = async (clip: Clip, type: "1080" | "720" | "srt") => {
+        setDownloadingClipId(clip.id);
+        setOpenDownloadMenu(null);
+        try {
+            const token = localStorage.getItem("clipstrike_token");
+            const url = type === "srt"
+                ? `${API_URL}/download/clip/${clip.id}/srt`
+                : `${API_URL}/download/clip/${clip.id}?quality=${type}`;
+
+            const res = await fetch(url, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            if (!res.ok) throw new Error("Erro ao baixar");
+
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = blobUrl;
+
+            const contentDisp = res.headers.get("content-disposition");
+            let filename = `clip_${clip.id}.${type === 'srt' ? 'srt' : 'mp4'}`;
+            if (contentDisp && contentDisp.includes("filename=")) {
+                filename = contentDisp.split("filename=")[1].replace(/"/g, "");
+            }
+
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            alert("Erro ao baixar. Tente novamente.");
+        } finally {
+            setDownloadingClipId(null);
+        }
+    };
+
+    const handleDownloadZip = async (videoId: string, videoTitle: string) => {
+        try {
+            const token = localStorage.getItem("clipstrike_token");
+            const res = await fetch(
+                `${API_URL}/download/video/${videoId}/zip?quality=${zipQuality}`,
+                { headers: { "Authorization": `Bearer ${token}` } }
+            );
+            if (!res.ok) throw new Error("Erro ao gerar ZIP");
+
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = `ClipStrike_${videoTitle.replace(/\s+/g, '_')}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            alert("Erro ao baixar ZIP.");
+        }
+    };
+
+    const groupedClips = useMemo(() => {
+        const groups: Record<string, { title: string, clips: Clip[] }> = {};
+        clips.forEach(clip => {
+            const vId = clip.video_id || 'manual';
+            if (!groups[vId]) {
+                const videoTitle = clip.videos?.title || 'Meus Clips';
+                groups[vId] = { title: videoTitle, clips: [] };
+            }
+            groups[vId].clips.push(clip);
+        });
+        return groups;
+    }, [clips]);
 
     const fetchChannels = async () => {
         try {
@@ -595,64 +679,126 @@ export default function DashboardPage() {
 
                         {/* TAB CONTENTS */}
                         {activeTab === 'clips' && (
-                            <div className="space-y-4">
-                                {clips.length > 0 ? (
-                                    clips.map(clip => (
-                                        <div key={clip.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.1)] border-gradient-s flex flex-col md:flex-row items-center gap-6 group hover:bg-white/[0.07] transition-all">
-                                            <div className="w-full md:w-56 aspect-video rounded-2xl overflow-hidden relative bg-white/5 border border-white/5 flex-shrink-0">
-                                                {clip.thumbnail ? (
-                                                    <img src={clip.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                                ) : <div className="w-full h-full flex items-center justify-center"><Video className="w-8 h-8 text-white/10" /></div>}
-                                                <div onClick={() => window.open(clip.file_url, '_blank')} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                                                    <PlayCircle className="w-12 h-12 text-white shadow-2xl" />
-                                                </div>
-                                            </div>
-
-                                            <div className="flex-1 min-w-0 py-2">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-md">
-                                                        Viral Score: {clip.viral_score}%
+                            <div className="space-y-12">
+                                {Object.keys(groupedClips).length > 0 ? (
+                                    Object.entries(groupedClips).map(([videoId, group]) => (
+                                        <div key={videoId} className="space-y-6">
+                                            {/* Video Group Header */}
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-1 h-8 bg-primary rounded-full" />
+                                                    <h3 className="text-xl font-black tracking-tighter truncate max-w-md">
+                                                        {group.title}
+                                                    </h3>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/20 bg-white/5 px-2 py-1 rounded-lg">
+                                                        {group.clips.length} clips
                                                     </span>
-                                                    <span className={`text-[10px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded-md ${clip.status === 'done' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
-                                                        }`}>
-                                                        {clip.status === 'done' ? 'Concluído' : clip.status === 'processing' ? 'Processando' : clip.status === 'pending' ? 'Pendente' : 'Erro'}
-                                                    </span>
-                                                    {clip.post_status === 'posted' && (
-                                                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                                            <Share2 className="w-3 h-3" /> Publicado
-                                                        </span>
-                                                    )}
                                                 </div>
-                                                <h3 className="text-lg font-bold truncate group-hover:text-primary transition-colors">{clip.title}</h3>
-                                                <div className="flex items-center gap-4 mt-3 text-white/40 text-xs font-medium">
-                                                    <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Postado por {clip.channel_name || 'Manual'}</div>
-                                                    <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {new Date(clip.created_at).toLocaleDateString()}</div>
-                                                </div>
-                                            </div>
 
-                                            <div className="flex items-center gap-3 ml-auto px-4">
-                                                {clip.status === 'done' && (
-                                                    <button
-                                                        onClick={() => setEditingClip(clip)}
-                                                        title="Publicar no YouTube"
-                                                        className={`p-3 rounded-xl transition-all ${clip.post_status === 'posted' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20'}`}
+                                                <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/5">
+                                                    <select
+                                                        value={zipQuality}
+                                                        onChange={e => setZipQuality(e.target.value as "1080" | "720")}
+                                                        className="bg-transparent border-none text-white/60 text-[10px] font-black uppercase tracking-widest px-3 outline-none cursor-pointer hover:text-white transition-colors"
                                                     >
-                                                        <Youtube className="w-5 h-5" />
+                                                        <option value="1080">1080p</option>
+                                                        <option value="720">720p</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={() => handleDownloadZip(videoId, group.title)}
+                                                        className="flex items-center gap-2 bg-white/10 hover:bg-primary hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl"
+                                                    >
+                                                        <Download className="w-3 h-3" />
+                                                        Baixar Pack (.ZIP)
                                                     </button>
-                                                )}
-                                                <button
-                                                    onClick={() => handleManualPost(clip.id)}
-                                                    title="Publicar em Outras Redes"
-                                                    className="p-3 bg-primary/10 border border-primary/20 rounded-xl hover:bg-primary/20 text-primary transition-all font-bold"
-                                                >
-                                                    <Share2 className="w-5 h-5" />
-                                                </button>
-                                                <button onClick={() => window.open(clip.file_url, '_blank')} className="p-3 bg-white/5 border border-white/10 rounded-xl hover:text-primary transition-all">
-                                                    <Download className="w-5 h-5" />
-                                                </button>
-                                                <button className="p-3 bg-white/5 border border-white/10 rounded-xl hover:text-white transition-all">
-                                                    <MoreVertical className="w-5 h-5" />
-                                                </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                {group.clips.map(clip => (
+                                                    <div key={clip.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.1)] border-gradient-s flex flex-col md:flex-row items-center gap-6 group hover:bg-white/[0.07] transition-all relative">
+                                                        <div className="w-full md:w-56 aspect-video rounded-2xl overflow-hidden relative bg-black border border-white/5 flex-shrink-0">
+                                                            {clip.thumbnail ? (
+                                                                <img src={clip.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-60 group-hover:opacity-100" />
+                                                            ) : <div className="w-full h-full flex items-center justify-center"><Video className="w-8 h-8 text-white/10" /></div>}
+                                                            <div onClick={() => window.open(clip.file_url, '_blank')} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                                                                <PlayCircle className="w-12 h-12 text-white shadow-2xl" />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex-1 min-w-0 py-2">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-md">
+                                                                    Viral Score: {clip.viral_score}%
+                                                                </span>
+                                                                <span className={`text-[10px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded-md ${clip.status === 'done' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
+                                                                    }`}>
+                                                                    {clip.status === 'done' ? 'Concluído' : clip.status === 'processing' ? 'Processando' : clip.status === 'pending' ? 'Pendente' : 'Erro'}
+                                                                </span>
+                                                            </div>
+                                                            <h3 className="text-lg font-bold truncate group-hover:text-primary transition-colors">{clip.hook || clip.title}</h3>
+                                                            <div className="flex items-center gap-4 mt-3 text-white/40 text-xs font-medium">
+                                                                <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {new Date(clip.created_at).toLocaleDateString()}</div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-3 ml-auto px-4">
+                                                            {clip.status === 'done' && (
+                                                                <button
+                                                                    onClick={() => setEditingClip(clip)}
+                                                                    title="Publicar no YouTube"
+                                                                    className={`p-3 rounded-xl transition-all ${clip.post_status === 'posted' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20'}`}
+                                                                >
+                                                                    <Youtube className="w-5 h-5" />
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => handleManualPost(clip.id)}
+                                                                title="Auto-Postagem"
+                                                                className="p-3 bg-primary/10 border border-primary/20 rounded-xl hover:bg-primary/20 text-primary transition-all shadow-lg"
+                                                            >
+                                                                <Share2 className="w-5 h-5" />
+                                                            </button>
+
+                                                            {/* Download Dropdown */}
+                                                            <div className="relative">
+                                                                <button
+                                                                    onClick={() => setOpenDownloadMenu(openDownloadMenu === clip.id ? null : clip.id)}
+                                                                    className={`p-3 bg-white/5 border border-white/10 rounded-xl transition-all hover:text-primary ${openDownloadMenu === clip.id ? 'text-primary border-primary/40 bg-primary/10' : ''}`}
+                                                                >
+                                                                    {downloadingClipId === clip.id ? (
+                                                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                                                    ) : (
+                                                                        <Download className="w-5 h-5" />
+                                                                    )}
+                                                                </button>
+
+                                                                {openDownloadMenu === clip.id && (
+                                                                    <div className="absolute bottom-full right-0 mb-4 w-64 bg-[#111] border border-white/10 rounded-3xl p-3 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                                                        <p className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/20 border-b border-white/5 mb-2">Opções de Download</p>
+                                                                        <button onClick={() => handleDownload(clip, "1080")} className="w-full flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-white/5 transition-all group text-left">
+                                                                            <span className="text-xs font-bold text-white/70 group-hover:text-white">Qualidade 1080p</span>
+                                                                            <span className="text-[9px] font-black uppercase tracking-tighter text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">High</span>
+                                                                        </button>
+                                                                        <button onClick={() => handleDownload(clip, "720")} className="w-full flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-white/5 transition-all group text-left">
+                                                                            <span className="text-xs font-bold text-white/70 group-hover:text-white">Qualidade 720p</span>
+                                                                            <span className="text-[9px] font-black uppercase tracking-tighter text-white/20 bg-white/5 px-1.5 py-0.5 rounded">Mobile</span>
+                                                                        </button>
+                                                                        <div className="h-[1px] bg-white/5 my-2 mx-4" />
+                                                                        <button onClick={() => handleDownload(clip, "srt")} className="w-full flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-white/5 transition-all group text-left">
+                                                                            <span className="text-xs font-bold text-white/70 group-hover:text-white">Legendas (.SRT)</span>
+                                                                            <span className="text-[9px] font-black uppercase tracking-tighter text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">Text</span>
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <button className="p-3 bg-white/5 border border-white/10 rounded-xl hover:text-white transition-all">
+                                                                <MoreVertical className="w-5 h-5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     ))

@@ -10,6 +10,9 @@ interface EditClipModalProps {
         file_url: string;
         thumbnail?: string;
         description?: string;
+        edit_silence_cut?: boolean;
+        edit_zoom?: boolean;
+        edit_broll?: boolean;
     };
     onClose: () => void;
     onPublish: (clipId: string) => void;
@@ -20,6 +23,9 @@ export function EditClipModal({ clip, onClose, onPublish, API_URL }: EditClipMod
     const [title, setTitle] = useState(clip.hook || clip.title);
     const [description, setDesc] = useState(clip.description || `${clip.hook || ""}\n\n#shorts #viral`);
     const [publishing, setPublishing] = useState(false);
+    const [editSilence, setEditSilence] = useState(clip.edit_silence_cut ?? true);
+    const [editZoom, setEditZoom] = useState(clip.edit_zoom ?? true);
+    const [editBRoll, setEditBRoll] = useState(clip.edit_broll ?? false);
 
     async function handlePublish() {
         setPublishing(true);
@@ -33,7 +39,13 @@ export function EditClipModal({ clip, onClose, onPublish, API_URL }: EditClipMod
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`,
                 },
-                body: JSON.stringify({ title, description }),
+                body: JSON.stringify({
+                    title,
+                    description,
+                    edit_silence_cut: editSilence,
+                    edit_zoom: editZoom,
+                    edit_broll: editBRoll
+                }),
             });
 
             if (!updateRes.ok) throw new Error("Erro ao salvar alterações");
@@ -112,6 +124,46 @@ export function EditClipModal({ clip, onClose, onPublish, API_URL }: EditClipMod
                                     placeholder="Descrição para as redes sociais..."
                                 />
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Advanced Edit Settings */}
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-4">
+                        <h3 className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">Configurações de Edição IA</h3>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${editSilence ? 'bg-primary/10 border-primary/50 text-white' : 'bg-white/5 border-white/5 text-white/40'}`}>
+                                <input type="checkbox" checked={editSilence} onChange={e => setEditSilence(e.target.checked)} className="hidden" />
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${editSilence ? 'bg-primary text-white' : 'bg-white/10'}`}>
+                                    <Share2 className="w-4 h-4 rotate-90" /> {/* Representando tesoura/corte */}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold">Corte de Silêncio</p>
+                                    <p className="text-[8px] opacity-60">IA remove vácuos</p>
+                                </div>
+                            </label>
+
+                            <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${editZoom ? 'bg-primary/10 border-primary/50 text-white' : 'bg-white/5 border-white/5 text-white/40'}`}>
+                                <input type="checkbox" checked={editZoom} onChange={e => setEditZoom(e.target.checked)} className="hidden" />
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${editZoom ? 'bg-primary text-white' : 'bg-white/10'}`}>
+                                    <Star className="w-4 h-4" /> {/* Representando zoom/foco */}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold">Zoom Dinâmico</p>
+                                    <p className="text-[8px] opacity-60">Movimento fluido</p>
+                                </div>
+                            </label>
+
+                            <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${editBRoll ? 'bg-primary/10 border-primary/50 text-white' : 'bg-white/5 border-white/5 text-white/40'}`}>
+                                <input type="checkbox" checked={editBRoll} onChange={e => setEditBRoll(e.target.checked)} className="hidden" />
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${editBRoll ? 'bg-primary text-white' : 'bg-white/10'}`}>
+                                    <Youtube className="w-4 h-4" /> {/* Representando B-roll/Video */}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold">B-Roll Auto</p>
+                                    <p className="text-[8px] opacity-60">Imagens Pexels</p>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 </div>
