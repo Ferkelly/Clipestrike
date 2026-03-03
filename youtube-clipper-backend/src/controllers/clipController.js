@@ -1,16 +1,20 @@
 const youTubeService = require('../services/youtubeService');
 const ffmpegService = require('../services/ffmpegService');
 const aiService = require('../services/aiService');
-const socialMediaService = require('../services/socialMediaService');
-const autoPostService = require('../services/autoPostService');
 const videoEditingService = require('../services/videoEditingService');
 const { db, supabase } = require('../config/database');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const autoPostService = require('../services/autoPostService');
 
 class ClipController {
-    // Iniciar processamento de vídeo (via ID)
+    /**
+     * Entry point for processing a video that already exists in the database.
+     */
     async processVideo(req, res) {
         const { videoId } = req.params;
+        const userId = req.user.id;
         const io = req.app.get('io');
 
         try {
@@ -24,13 +28,17 @@ class ClipController {
                 return res.status(404).json({ error: 'Vídeo não encontrado' });
             }
 
-            // Atualizar status
-            await db.updateVideoStatus(videoId, 'processing');
+            // Use saved options or defaults
+            const options = video.processing_options || this._getDefaultOptions();
+
+            // 1. Respond quickly to user
             res.json({ success: true, message: 'Processamento iniciado', videoId });
 
-            // Disparar pipeline em background
-            this._runProcessingPipeline(videoId, video, io).catch(err => {
-                console.error('[Pipeline Error]:', err);
+            // 2. Start background pipeline
+            setImmediate(() => {
+                this.runUnifiedPipeline(videoId, video, io, options).catch(err => {
+                    console.error(`[Background Pipeline Error for ${videoId}]:`, err);
+                });
             });
 
         } catch (error) {
@@ -39,9 +47,11 @@ class ClipController {
         }
     }
 
-    // Iniciar processamento direto via URL do YouTube
+    /**
+     * Entry point for processing a video from a URL (starts search/import).
+     */
     async processUrl(req, res) {
-        const { url, type } = req.body;
+        const { url, type, options = {} } = req.body;
         const userId = req.user.id;
         const io = req.app.get('io');
 
@@ -49,18 +59,15 @@ class ClipController {
 
         try {
             let youtubeVideoId;
-
             if (type === 'channel') {
-                // Buscar o vídeo mais recente do canal
                 youtubeVideoId = await youTubeService.getLatestVideoFromChannel(url);
             } else {
-                // 1. Extrair ID do YouTube
                 const ytIdMatch = url.match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
                 if (!ytIdMatch) return res.status(400).json({ error: 'URL do YouTube inválida.' });
                 youtubeVideoId = ytIdMatch[1];
             }
 
-            // 2. Garantir que o usuário tem um canal "Manual" para associar o vídeo
+            // Ensure manual channel exists
             let { data: channel } = await supabase
                 .from('channels')
                 .select('id')
@@ -78,13 +85,15 @@ class ClipController {
                 });
             }
 
-            // 3. Criar ou buscar o vídeo no banco
+            // Find or create video
             let { data: video } = await supabase
                 .from('videos')
                 .select('*')
                 .eq('youtube_video_id', youtubeVideoId)
-                .eq('user_id', userId) // Versão do usuário
+                .eq('user_id', userId)
                 .single();
+
+            const mergedOptions = { ...this._getDefaultOptions(), ...options };
 
             if (!video) {
                 video = await db.createVideo({
@@ -93,23 +102,23 @@ class ClipController {
                     youtube_video_id: youtubeVideoId,
                     title: 'Processando vídeo...',
                     status: 'pending',
-                    source: 'manual'
+                    source: 'manual',
+                    processing_options: mergedOptions,
+                    url: url.includes('youtube.com') ? url : `https://www.youtube.com/watch?v=${youtubeVideoId}`
                 });
+            } else {
+                // Update options if provided
+                await supabase.from('videos').update({ processing_options: mergedOptions }).eq('id', video.id);
             }
 
-            // 4. Iniciar processamento (mesma lógica do processVideo)
-            await db.updateVideoStatus(video.id, 'processing');
+            // Immediate response
             res.json({ success: true, message: 'Processamento iniciado', videoId: video.id });
 
-            // Refetch para ter as infos do canal
-            const { data: fullVideo } = await supabase
-                .from('videos')
-                .select('*, channels(*)')
-                .eq('id', video.id)
-                .single();
-
-            this._runProcessingPipeline(video.id, fullVideo, io).catch(err => {
-                console.error('[Pipeline Error]:', err);
+            // Background pipeline
+            setImmediate(() => {
+                this.runUnifiedPipeline(video.id, video, io, mergedOptions).catch(err => {
+                    console.error(`[Background Pipeline Error for ${video.id}]:`, err);
+                });
             });
 
         } catch (err) {
@@ -118,27 +127,12 @@ class ClipController {
         }
     }
 
-    // Pipeline principal de execução (Background)
-    async _runProcessingPipeline(videoId, video, io) {
-        return this.processVideoPipelineWithOptions(videoId, video, io, {
-            maxClips: 5,
-            minDuration: 30,
-            maxDuration: 60,
-            silenceCut: true,
-            dynamicZoom: true,
-            broll: false,
-            subtitles: true,
-            subtitleStyle: 'hormozi',
-            subtitleLang: 'pt',
-            autoPublish: false
-        });
-    }
-
-    // Pipeline com opções personalizadas
-    async processVideoPipelineWithOptions(videoId, video, io, options) {
-        const fs = require('fs');
+    /**
+     * Unified Pipeline: The heavy lifting.
+     */
+    async runUnifiedPipeline(videoId, video, io, options) {
         const emitProgress = (step, percent, msg) => {
-            console.log(`[Process] [${percent}%] ${msg}`);
+            console.log(`[Pipeline] [${videoId}] [${percent}%] ${msg}`);
             io?.to(video.user_id).emit('video-progress', {
                 id: videoId,
                 videoId,
@@ -150,66 +144,73 @@ class ClipController {
         };
 
         try {
-            emitProgress('START', 5, "Iniciando processamento...");
+            // Initial state update
+            await db.updateVideoStatus(videoId, 'processing');
+            emitProgress('START', 2, "Iniciando motores... 🚀");
 
-            // 1. Download ou usar arquivo já uploaded
-            let downloadPath;
+            // 1. Resolve Source File
+            let workingFilePath;
+            const uploadsDir = path.join(process.cwd(), 'uploads');
+            if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
             if (video.source === 'manual_upload' && video.url && fs.existsSync(video.url)) {
-                downloadPath = video.url;
-                emitProgress('UPLOAD', 15, "Arquivo local carregado ✅");
+                workingFilePath = video.url;
+                emitProgress('UPLOAD', 10, "Arquivo local carregado ✅");
             } else {
-                emitProgress('DOWNLOAD', 10, 'Baixando vídeo do YouTube...');
+                emitProgress('DOWNLOAD', 5, 'Baixando vídeo do YouTube...');
                 const videoUrl = video.url || `https://youtube.com/watch?v=${video.youtube_video_id}`;
-                downloadPath = path.join(__dirname, '../../uploads', `${videoId}.mp4`);
+                workingFilePath = path.join(uploadsDir, `${videoId}_original.mp4`);
 
-                if (!fs.existsSync(path.dirname(downloadPath))) {
-                    fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
+                // Do not re-download if exists and valid (cache)
+                if (!fs.existsSync(workingFilePath)) {
+                    await youTubeService.downloadVideo(videoUrl, workingFilePath);
                 }
-                await youTubeService.downloadVideo(videoUrl, downloadPath);
                 emitProgress('DOWNLOAD', 20, "Download concluído ✅");
             }
 
-            // 2. Transcrever
+            // 2. Audio & Transcription
             emitProgress('TRANSCRIPTION', 30, 'Transcrevendo áudio (IA)...');
-            const audioPath = path.join(__dirname, '../../uploads', `${videoId}.mp3`);
+            const audioPath = path.join(uploadsDir, `${videoId}.mp3`);
 
-            await ffmpegService.extractAudio(downloadPath, audioPath, (p) => {
-                emitProgress('TRANSCRIPTION', 20 + (p * 0.10), 'Extraindo áudio...');
+            await ffmpegService.extractAudio(workingFilePath, audioPath, (p) => {
+                emitProgress('TRANSCRIPTION', 25 + (p * 0.10), 'Extraindo áudio...');
             });
 
             const transcriptionData = await aiService.transcribeWithWords(audioPath);
             const transcription = transcriptionData.text;
+            emitProgress('TRANSCRIPTION', 45, 'Transcrição concluída ✅');
 
-            // 3. Analisar momentos virais (com opções)
+            // 3. AI Analysis
             emitProgress('AI', 50, 'Analisando momentos virais com IA...');
-            // Adaptar aiService para aceitar limites se necessário, ou filtrar aqui
             const analysis = await aiService.analyzeTranscription(transcription);
 
-            // Limitar número de clips
+            let clipsToProcess = analysis.clips || [];
             if (options.maxClips) {
-                analysis.clips = analysis.clips.slice(0, options.maxClips);
+                clipsToProcess = clipsToProcess.slice(0, options.maxClips);
             }
+            emitProgress('AI', 55, `Identificados ${clipsToProcess.length} momentos promissores!`);
 
-            // 4. Calcular enquadramento inteligente
-            emitProgress('IA', 55, 'Calculando enquadramento inteligente...');
-            const framingData = await aiService.getSmartFraming(downloadPath);
-            const xOffset = framingData.x_offset_pct;
+            // 4. Smart Framing (Optional but usually good)
+            emitProgress('FRAMING', 58, 'Calculando enquadramento vertical...');
+            const framingData = await aiService.getSmartFraming(workingFilePath);
+            const xOffset = framingData.x_offset_pct || 0;
 
-            // 5. Criar clips
+            // 5. Clipping Loop
             const subtitleGenerator = require('../utils/subtitleGenerator');
-            const clipsCount = analysis.clips.length;
             const createdClips = [];
 
-            emitProgress('CLIPPING', 60, `Gerando ${clipsCount} clips virais...`);
+            for (let i = 0; i < clipsToProcess.length; i++) {
+                const stagePercent = 60 + (i / clipsToProcess.length) * 35;
+                const clipData = clipsToProcess[i];
+                emitProgress('CLIPPING', stagePercent, `Processando clip ${i + 1} de ${clipsToProcess.length}...`);
 
-            for (let i = 0; i < clipsCount; i++) {
-                const clipData = analysis.clips[i];
                 const startSeconds = this.timeToSeconds(clipData.start);
                 const endSeconds = this.timeToSeconds(clipData.end);
                 const duration = endSeconds - startSeconds;
 
                 if (duration <= 0) continue;
 
+                // Sync words for this specific clip
                 const clipWords = transcriptionData.words.filter(w =>
                     w.start >= startSeconds && w.end <= endSeconds
                 ).map(w => ({
@@ -218,20 +219,19 @@ class ClipController {
                     end: w.end - startSeconds
                 }));
 
-                const assPath = path.join(__dirname, '../../uploads', `${videoId}_${i}.ass`);
+                const assPath = path.join(uploadsDir, `${videoId}_${i}.ass`);
                 subtitleGenerator.generateAss(clipWords, assPath);
 
-                // 1. Extração base
+                // Phase A: Base Crop
                 const rawClipPath = await ffmpegService.extractVerticalClip(
-                    downloadPath,
+                    workingFilePath,
                     startSeconds,
                     duration,
                     `${videoId}_${i}_raw`,
-                    { xOffset: xOffset, subtitlesPath: null }
+                    { xOffset, subtitlesPath: null }
                 );
 
-                // 2. Edições Avançadas (respeitando opções)
-                emitProgress('ADVANCED_EDIT', 65 + (i / clipsCount) * 20, `Clip ${i + 1}: Aplicando edições...`);
+                // Phase B: Advanced Edits
                 const editResult = await videoEditingService.applyAdvancedEditing(
                     rawClipPath,
                     duration,
@@ -243,17 +243,17 @@ class ClipController {
                     }
                 );
 
-                // 3. Queimar Legendas
-                let finalProcessedPath = editResult.path;
+                // Phase C: Burn Subtitles
+                let finalPath = editResult.path;
                 if (options.subtitles) {
-                    const subtitledPath = path.join(__dirname, '../../uploads', `${videoId}_${i}_final.mp4`);
+                    const subtitledPath = path.join(uploadsDir, `${videoId}_${i}_final.mp4`);
                     await ffmpegService.addSubtitles(editResult.path, assPath, subtitledPath);
-                    finalProcessedPath = subtitledPath;
+                    finalPath = subtitledPath;
                 }
 
-                const fileName = `${videoId}_${i}_${Date.now()}.mp4`;
-                const fileBuffer = fs.readFileSync(finalProcessedPath);
-
+                // Phase D: Upload to Storage & DB
+                const fileName = `${videoId}_clip_${i}_${Date.now()}.mp4`;
+                const fileBuffer = fs.readFileSync(finalPath);
                 await db.uploadFile('clips', fileName, fileBuffer);
                 const publicUrl = await db.getPublicUrl('clips', fileName);
 
@@ -275,147 +275,97 @@ class ClipController {
 
                 createdClips.push(clip);
 
-                // Limpeza
-                [rawClipPath, finalProcessedPath, assPath, ...editResult.tempFiles].forEach(f => {
+                // Cleanup clip-specific files
+                [rawClipPath, finalPath !== editResult.path ? finalPath : null, assPath, ...editResult.tempFiles].forEach(f => {
                     if (f && fs.existsSync(f)) try { fs.unlinkSync(f); } catch (_) { }
                 });
             }
 
-            // Finalizar
+            // 6. Cleanup & Finalize
             await db.updateVideoStatus(videoId, 'done', {
                 transcription,
                 processed_at: new Date()
             });
 
+            // Keep original if it was manual_upload for future use, otherwise cleanup
             if (video.source !== 'manual_upload') {
-                if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+                if (fs.existsSync(workingFilePath)) fs.unlinkSync(workingFilePath);
             }
             if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
 
-            emitProgress('DONE', 100, 'Tudo pronto! ✅');
+            emitProgress('DONE', 100, 'Processamento concluído com sucesso! ✅');
 
-            // Auto-postagem
             if (options.autoPublish) {
                 autoPostService.autoPublishReadyClips(videoId, video.user_id).catch(console.error);
             }
 
         } catch (err) {
-            console.error('[Pipeline Error]:', err);
+            console.error(`[Pipeline Error for ${videoId}]:`, err);
             await db.updateVideoStatus(videoId, 'failed', { error_message: err.message });
             io?.to(video.user_id).emit('video-error', { id: videoId, videoId, message: err.message });
         }
     }
 
-    // Auto-postar clip nas redes sociais
-    async autoPost(req, res) {
-        const { clipId } = req.params;
-        const { platforms } = req.body; // ['tiktok', 'instagram', 'youtube']
-
-        try {
-            const { data: clip } = await supabase
-                .from('clips')
-                .select('*, videos(*, channels(*))')
-                .eq('id', clipId)
-                .single();
-
-            const results = [];
-
-            // Usar o AutoPostService para fazer o post unificado se o user quiser
-            // ou manter manual se for o caso. Por enquanto simplificamos.
-
-            res.json({ success: true, message: 'Postagem automática agendada.' });
-
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
+    _getDefaultOptions() {
+        return {
+            maxClips: 5,
+            minDuration: 30,
+            maxDuration: 60,
+            silenceCut: true,
+            dynamicZoom: true,
+            broll: false,
+            subtitles: true,
+            subtitleStyle: 'hormozi',
+            subtitleLang: 'pt',
+            autoPublish: false
+        };
     }
 
-    // Listar clips (do usuário ou de um vídeo específico)
+    timeToSeconds(timeStr) {
+        if (typeof timeStr === 'number') return timeStr;
+        if (!timeStr) return 0;
+        const parts = timeStr.split(':').map(Number);
+        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        if (parts.length === 2) return parts[0] * 60 + parts[1];
+        return Number(timeStr) || 0;
+    }
+
+    // Helper methods for routes
     async listClips(req, res) {
         try {
             const { videoId } = req.query;
             const userId = req.user.id;
-
-            let query = supabase
-                .from('clips')
-                .select('*, videos!inner(*)')
-                .order('created_at', { ascending: false });
-
-            if (videoId) {
-                query = query.eq('video_id', videoId);
-            } else {
-                query = query.eq('videos.user_id', userId);
-            }
-
+            let query = supabase.from('clips').select('*, videos!inner(*)').order('created_at', { ascending: false });
+            if (videoId) query = query.eq('video_id', videoId);
+            else query = query.eq('videos.user_id', userId);
             const { data: clips, error } = await query;
             if (error) throw error;
-
             res.json({ clips });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
+        } catch (err) { res.status(500).json({ error: err.message }); }
     }
 
-    // Detalhes de um clip
     async getClip(req, res) {
         try {
-            const { data, error } = await supabase
-                .from('clips')
-                .select('*, videos(id, title, youtube_video_id, thumbnail)')
-                .eq('id', req.params.clipId)
-                .single();
+            const { data, error } = await supabase.from('clips').select('*, videos(id, title, youtube_video_id, thumbnail)').eq('id', req.params.clipId).single();
             if (error) return res.status(404).json({ error: 'Clip não encontrado.' });
             res.json({ clip: data });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
+        } catch (err) { res.status(500).json({ error: err.message }); }
     }
 
-    // Atualizar título/descrição de um clip
     async updateClip(req, res) {
-        const { title, description, edit_silence_cut, edit_zoom, edit_broll } = req.body;
-        const { clipId } = req.params;
-
         try {
-            const { data, error } = await supabase
-                .from('clips')
-                .update({
-                    title,
-                    description,
-                    edit_silence_cut,
-                    edit_zoom,
-                    edit_broll,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', clipId)
-                .eq('user_id', req.user.id)
-                .select()
-                .single();
-
+            const { data, error } = await supabase.from('clips').update({ ...req.body, updated_at: new Date().toISOString() }).eq('id', req.params.clipId).eq('user_id', req.user.id).select().single();
             if (error) throw error;
             res.json(data);
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
+        } catch (err) { res.status(500).json({ error: err.message }); }
     }
 
-    // Deletar clip
     async deleteClip(req, res) {
         try {
             const { error } = await supabase.from('clips').delete().eq('id', req.params.clipId);
             if (error) throw error;
             res.json({ message: 'Clip deletado com sucesso.' });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
-    }
-
-    // Converter HH:MM:SS ou MM:SS para segundos
-    timeToSeconds(timeStr) {
-        if (typeof timeStr === 'number') return timeStr;
-        const parts = timeStr.split(':').map(Number);
-        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-        return parts[0] * 60 + parts[1];
+        } catch (err) { res.status(500).json({ error: err.message }); }
     }
 }
 
