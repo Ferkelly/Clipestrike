@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import DashboardPage from "./pages/DashboardPage";
 import { LoginPage, SignupPage } from "./pages/AuthPages";
-import { ConnectChannelPage, ConnectPlatformsPage } from "./pages/SetupPages";
+import { ConnectChannelPage } from "./pages/SetupPages";
+import SetupPlatformsPage from "./pages/SetupPlatformsPage";
 import { Zap } from "lucide-react";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -40,7 +41,7 @@ export default function App() {
           <PrivateRoute><ConnectChannelPage /></PrivateRoute>
         } />
         <Route path="/setup/platforms" element={
-          <PrivateRoute><ConnectPlatformsPage /></PrivateRoute>
+          <PrivateRoute><SetupPlatformsPage /></PrivateRoute>
         } />
 
         {/* App */}

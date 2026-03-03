@@ -34,7 +34,7 @@ router.get("/platforms", authenticate, async (req, res) => {
 // ── POST /api/autopost/platforms/config ───────────────────────────────────
 // Salva configuração de plataformas do usuário
 router.post("/platforms/config", authenticate, async (req, res) => {
-    const { uploadPostUser, enabledPlatforms, auto_post } = req.body;
+    const { uploadPostUser, enabledPlatforms, autoPost } = req.body;
 
     if (!uploadPostUser || !enabledPlatforms?.length) {
         return res.status(400).json({ error: "uploadPostUser e enabledPlatforms são obrigatórios" });
@@ -47,7 +47,7 @@ router.post("/platforms/config", authenticate, async (req, res) => {
                 user_id: req.user.id,
                 upload_post_user: uploadPostUser,
                 enabled_platforms: enabledPlatforms,
-                auto_post: auto_post !== undefined ? auto_post : true,
+                auto_post: autoPost !== undefined ? autoPost : true,
                 updated_at: new Date().toISOString(),
             }, { onConflict: "user_id" })
             .select()
