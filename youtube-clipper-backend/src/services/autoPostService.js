@@ -89,7 +89,8 @@ async function publishClip(options) {
         await supabase
             .from("clips")
             .update({
-                post_status: "failed",
+                post_status: "post_failed",
+                post_error: err.message,
                 post_results: results,
             })
             .eq("id", clipId);
@@ -105,11 +106,12 @@ async function autoPublishReadyClips(videoId, userId) {
     console.log(`[AutoPost] 📋 Verificando clips prontos para auto-post (Video: ${videoId})...`);
 
     // Busca clips prontos que ainda não foram publicados
+    // Nota: Alinhando com status 'done' da nova especificação
     const { data: clips, error } = await supabase
         .from("clips")
         .select("*")
         .eq("video_id", videoId)
-        .eq("status", "ready") // 'ready' é o status final no banco atual
+        .eq("status", "done")
         .is("post_status", null);
 
     if (error || !clips?.length) {
@@ -124,20 +126,20 @@ async function autoPublishReadyClips(videoId, userId) {
         .eq("user_id", userId)
         .single();
 
-    if (!userConfig || !userConfig.up_username || !userConfig.platforms?.length) {
+    if (!userConfig || !userConfig.upload_post_user || !userConfig.enabled_platforms?.length) {
         console.log(`[AutoPost] ⚠️  Usuário não tem plataformas configuradas ou auto_post desligado`);
         return;
     }
 
-    // Só publica se o auto_post estiver ligado
-    if (!userConfig.auto_post) {
+    // Só publica se o auto_post estiver ligado (se o campo existir, senão assume true se configurado)
+    if (userConfig.auto_post === false) {
         console.log(`[AutoPost] ⏸ Auto-post desativado para o usuário`);
         return;
     }
 
     for (const clip of clips) {
         try {
-            // Resolve o caminho do arquivo (se for URL, baixa)
+            // Resolve o caminho do arquivo
             let filePath;
             if (clip.file_url && clip.file_url.startsWith("http")) {
                 filePath = await downloadClipToTemp(clip.file_url, clip.id);
@@ -151,14 +153,14 @@ async function autoPublishReadyClips(videoId, userId) {
             await publishClip({
                 clipId: clip.id,
                 clipFilePath: filePath,
-                title: clip.hook || clip.title || "Clip gerado por ClipStrike",
-                platforms: userConfig.platforms,
-                uploadPostUser: userConfig.up_username,
+                title: clip.hook || clip.title || "Clip automático ⚡",
+                platforms: userConfig.enabled_platforms,
+                uploadPostUser: userConfig.upload_post_user,
             });
 
             // Limpa arquivo temporário se foi baixado
             if (clip.file_url.startsWith("http") && fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+                try { fs.unlinkSync(filePath); } catch (e) { }
             }
 
             // Delay entre posts
@@ -170,11 +172,11 @@ async function autoPublishReadyClips(videoId, userId) {
 }
 
 /**
- * Download temporário se o clip estiver no Cloud Storage
+ * Download temporário se o clip estiver no Storage
  */
 async function downloadClipToTemp(url, clipId) {
     const uploadsDir = path.join(process.cwd(), "uploads");
-    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
     const tempPath = path.join(uploadsDir, `temp_post_${clipId}.mp4`);
 
@@ -194,5 +196,6 @@ async function downloadClipToTemp(url, clipId) {
 
 module.exports = {
     publishClip,
-    autoPublishReadyClips
+    autoPublishReadyClips,
+    downloadClipToTemp // Exportando para uso dinâmico se necessário
 };

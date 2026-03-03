@@ -198,8 +198,8 @@ export function ConnectPlatformsPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
-                    up_username: username,
-                    platforms: selectedPlatforms,
+                    upload_post_user: username,
+                    enabled_platforms: selectedPlatforms,
                     auto_post: autoPost
                 }),
             });

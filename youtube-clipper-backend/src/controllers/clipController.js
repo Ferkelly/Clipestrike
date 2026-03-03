@@ -124,7 +124,7 @@ class ClipController {
                             end_time: clipData.end,
                             viral_score: clipData.viral_score,
                             file_url: publicUrl,
-                            status: 'ready',
+                            status: 'done',
                             hook: clipData.hook,
                             reason: clipData.reason
                         });
