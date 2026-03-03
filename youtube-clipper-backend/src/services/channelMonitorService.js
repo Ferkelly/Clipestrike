@@ -71,7 +71,7 @@ class ChannelMonitorService {
 
     // ── Verifica um canal específico ──────────────────────────────────────────
     async checkChannel(channel) {
-        console.log(`[Monitor] 🔍 Verificando canal: ${channel.name} (ID: ${channel.youtube_channel_id})`);
+        console.log(`[Monitor] 🔍 Verificando canal: ${channel.title || channel.name} (ID: ${channel.youtube_channel_id})`);
         let newVideosFound = 0;
 
         try {
@@ -83,7 +83,7 @@ class ChannelMonitorService {
             const videos = await youtubeService.getLatestVideos(channel.youtube_channel_id, publishedAfter);
 
             if (!videos || videos.length === 0) {
-                console.log(`[Monitor] ☕ Sem novos vídeos para ${channel.name}`);
+                console.log(`[Monitor] ☕ Sem novos vídeos para ${channel.title || channel.name}`);
             } else {
                 for (const videoData of videos) {
                     const videoId = videoData.id.videoId;
@@ -112,7 +112,7 @@ class ChannelMonitorService {
                 .eq("id", channel.id);
 
         } catch (err) {
-            console.error(`[Monitor] ❌ Erro ao verificar ${channel.name}:`, err.message);
+            console.error(`[Monitor] ❌ Erro ao verificar ${channel.title || channel.name}:`, err.message);
             await supabase
                 .from("channels")
                 .update({ status: "error", last_error: err.message })
