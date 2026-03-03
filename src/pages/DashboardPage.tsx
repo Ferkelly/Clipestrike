@@ -15,7 +15,12 @@ import {
     Clock,
     Instagram,
     Facebook,
-    Download
+    Download,
+    RefreshCw,
+    CreditCard,
+    MoreVertical,
+    Calendar,
+    User
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 
@@ -59,15 +64,15 @@ interface VideoJob {
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: string; icon: any; color: string }) {
     return (
-        <div className="glass-card rounded-2xl p-6 border-white/5 hover:border-white/10 transition-all group">
+        <div className="bg-white/[0.03] border border-white/10 backdrop-blur-xl rounded-3xl p-6 shadow-[0_10px_30px_rgba(0,0,0,0.2)] border-gradient-s group hover:bg-white/[0.05] transition-all">
             <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl ${color} bg-opacity-10 text-opacity-100`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-${color}-500/10 text-${color}-500 group-hover:scale-110 transition-transform`}>
                     <Icon className="h-5 w-5" />
                 </div>
-                <span className="text-xs font-mono text-muted-foreground">AUTO ✨</span>
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
-            <div className="text-2xl font-display tracking-tight text-foreground mb-1">{value}</div>
-            <div className="text-xs text-muted-foreground uppercase tracking-widest font-mono">{label}</div>
+            <div className="text-3xl font-bold tracking-tight mb-1">{value}</div>
+            <div className="text-[10px] uppercase font-bold tracking-[0.2em] text-white/30">{label}</div>
         </div>
     );
 }
@@ -76,7 +81,14 @@ export default function DashboardPage() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Sync activeTab with URL
+    // Tabs
+    const tabs = [
+        { id: 'channels', label: 'Channels', icon: Youtube },
+        { id: 'platforms', label: 'Platforms', icon: Share2 },
+        { id: 'runs', label: 'Agent Runs', icon: PlayCircle },
+        { id: 'clips', label: 'My Clips', icon: Video },
+    ];
+
     const activeTab = useMemo(() => {
         const path = location.pathname.split('/').filter(Boolean).pop();
         if (path === 'dashboard' || !path) return 'clips';
@@ -87,7 +99,7 @@ export default function DashboardPage() {
     }, [location.pathname]);
 
     const setActiveTab = (tab: string) => {
-        if (tab === 'clips' || tab === 'dashboard') navigate('/dashboard');
+        if (tab === 'clips') navigate('/dashboard');
         else if (tab === 'channels') navigate('/dashboard/canais');
         else if (tab === 'platforms') navigate('/dashboard/plataformas');
         else if (tab === 'runs') navigate('/dashboard/runs');
@@ -110,7 +122,6 @@ export default function DashboardPage() {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (res.status === 401) {
-                localStorage.removeItem("token");
                 navigate("/login");
                 return;
             }
@@ -161,17 +172,9 @@ export default function DashboardPage() {
         });
 
         socket.on("video-progress", (data: any) => {
-            console.log("Socket message:", data);
-
             if (data.status === 'done' || data.status === 'error') {
                 fetchClips();
-                if (data.status === 'done') {
-                    setTimeout(() => {
-                        setRuns(prev => prev.filter(r => r.videoId !== data.videoId));
-                    }, 15000);
-                }
             }
-
             setRuns(prev => {
                 const videoId = data.videoId || data.id;
                 const index = prev.findIndex(r => r.videoId === videoId);
@@ -187,452 +190,285 @@ export default function DashboardPage() {
         return () => { socket.disconnect(); };
     }, []);
 
-    // Auto-refresh clips if any are processing
-    useEffect(() => {
-        const hasProcessing = clips.some(c => c.status === 'processing' || c.status === 'pending');
-        if (hasProcessing) {
-            const interval = setInterval(fetchClips, 10000);
-            return () => clearInterval(interval);
-        }
-    }, [clips]);
-
-    const detectUrlType = (rawUrl: string): 'video' | 'channel' | 'invalid' => {
-        const u = rawUrl.trim().toLowerCase();
-        if (!u) return 'invalid';
-
-        // URLs de VÍDEO válidas
-        if (
-            u.includes('youtube.com/watch?v=') ||
-            u.includes('youtu.be/') ||
-            u.includes('youtube.com/shorts/')
-        ) return 'video';
-
-        // URLs de CANAL válidas
-        if (
-            u.includes('youtube.com/@') ||
-            u.includes('youtube.com/channel/') ||
-            u.includes('youtube.com/c/') ||
-            u.includes('youtube.com/user/')
-        ) return 'channel';
-
-        return 'invalid';
-    };
-
     const handleProcess = async () => {
-        setUrlError("");
-        if (!url) return;
-
-        const type = detectUrlType(url);
-
-        if (type === 'invalid') {
-            setUrlError("Cole uma URL do YouTube válida (vídeo ou canal)");
-            return;
-        }
+        const videoUrl = prompt("Enter YouTube Video or Channel URL:");
+        if (!videoUrl) return;
 
         setProcessing(true);
         try {
             const token = localStorage.getItem("clipstrike_token");
-            console.log("Iniciando requisição para:", `${API_URL}/videos/import`);
-
+            const isChannel = videoUrl.includes("/@") || videoUrl.includes("/channel/");
             const res = await fetch(`${API_URL}/videos/import`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ url, type })
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ url: videoUrl, type: isChannel ? 'channel' : 'video' })
             });
-
-            // Tenta pegar o JSON, mas trata se não for JSON
-            let data;
-            const contentType = res.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-                data = await res.json();
-            } else {
-                const text = await res.text();
-                console.error("Resposta não é JSON:", text);
-                throw new Error(`Erro do servidor (Status ${res.status}): A resposta não é um JSON válido.`);
-            }
-
             if (res.ok) {
-                setUrl("");
                 setActiveTab("runs");
             } else {
-                setUrlError(data.error || "Erro ao processar conteúdo");
+                const data = await res.json();
+                alert(data.error || "Error processing video");
             }
         } catch (err: any) {
-            console.error("Erro detalhado no processamento:", err);
-
-            if (err.message.includes("JSON")) {
-                setUrlError(err.message);
-            } else if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-                setUrlError(`Falha de conexão com ${API_URL}. Verifique CORS ou se a URL está correta.`);
-            } else {
-                setUrlError(`Erro: ${err.message || "Falha de conexão com o servidor"}`);
-            }
+            alert("Error: " + err.message);
         } finally {
             setProcessing(false);
         }
     };
 
-    const handleAddChannel = async () => {
-        const channelUrl = prompt("Cole a URL do canal do YouTube:");
-        if (!channelUrl) return;
-
-        try {
-            const token = localStorage.getItem("clipstrike_token");
-            const res = await fetch(`${API_URL}/channels`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ url: channelUrl })
-            });
-            if (res.ok) {
-                fetchChannels();
-            } else {
-                const data = await res.json();
-                alert(data.error || "Erro ao adicionar canal");
-            }
-        } catch (err) {
-            console.error("Erro ao adicionar canal:", err);
-        }
-    };
-
-    const menuItems = [
-        { id: "clips", label: "Meus Clips", icon: Video },
-        { id: "channels", label: "Canais", icon: Youtube },
-        { id: "platforms", label: "Plataformas", icon: Share2 },
-        { id: "runs", label: "Agent Runs", icon: PlayCircle },
-    ];
-
     if (loading) {
         return (
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 text-primary">
-                <Zap className="h-12 w-12 animate-pulse" fill="currentColor" />
-                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="min-h-screen bg-[#0B0F19] flex flex-col items-center justify-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.4)] animate-pulse">
+                    <Zap className="h-8 w-8 text-white" fill="currentColor" />
+                </div>
+                <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 animate-[loading-bar_2s_infinite_ease-in-out]" />
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans flex overflow-hidden">
-            {/* Sidebar */}
-            <aside className="w-64 border-r border-white/5 flex flex-col bg-background relative z-20">
-                <div className="p-8 pb-4">
-                    <div className="flex items-center gap-2 mb-10 cursor-pointer" onClick={() => navigate("/")}>
-                        <Zap className="h-6 w-6 text-primary" fill="currentColor" />
-                        <span className="font-display text-2xl tracking-wider pt-1">CLIPSTRIKE</span>
+        <div className="min-h-screen bg-[#0B0F19] text-white font-sans flex overflow-hidden">
+            {/* Sidebar (Minimal) */}
+            <aside className="w-20 lg:w-64 border-r border-white/5 flex flex-col bg-black/20 backdrop-blur-3xl z-40">
+                <div className="p-6 flex justify-center lg:justify-start">
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+                            <Zap className="h-5 w-5 text-white" fill="currentColor" />
+                        </div>
+                        <span className="hidden lg:block font-bold tracking-tight bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 bg-clip-text text-transparent pt-0.5">
+                            EasySlice.AI
+                        </span>
                     </div>
-
-                    <nav className="space-y-1">
-                        {menuItems.map(item => (
-                            <button
-                                key={item.id}
-                                onClick={() => setActiveTab(item.id)}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === item.id || (activeTab === 'clips' && item.id === 'clips')
-                                    ? "bg-gradient-primary text-white shadow-lg shadow-primary/20"
-                                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                                    }`}
-                            >
-                                <item.icon className="h-4 w-4" />
-                                {item.label}
-                            </button>
-                        ))}
-                    </nav>
                 </div>
 
-                <div className="mt-auto p-8 pt-4 border-t border-white/5">
-                    <button
-                        onClick={() => navigate("/settings")}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground w-full transition-all"
-                    >
-                        <Settings className="h-4 w-4" />
-                        Configurações
+                <nav className="flex-1 px-4 space-y-2 mt-8">
+                    {tabs.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            className={`w-full flex items-center justify-center lg:justify-start gap-3 px-4 py-3.5 rounded-2xl transition-all group ${activeTab === item.id
+                                ? "bg-white/10 text-white shadow-lg border border-white/10"
+                                : "text-white/40 hover:text-white hover:bg-white/5"
+                                }`}
+                        >
+                            <item.icon className={`h-5 w-5 ${activeTab === item.id ? "text-purple-400" : "group-hover:text-purple-400 transition-colors"}`} />
+                            <span className="hidden lg:block text-sm font-bold">{item.label}</span>
+                        </button>
+                    ))}
+                </nav>
+
+                <div className="p-4 border-t border-white/5 space-y-2">
+                    <button onClick={() => navigate("/settings")} className="w-full flex items-center justify-center lg:justify-start gap-3 px-4 py-3.5 rounded-2xl text-white/40 hover:text-white hover:bg-white/5 transition-all">
+                        <Settings className="h-5 w-5" />
+                        <span className="hidden lg:block text-sm font-bold">Settings</span>
                     </button>
-                    <button
-                        onClick={() => { localStorage.clear(); navigate("/"); }}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 w-full transition-all"
-                    >
-                        <LogOut className="h-4 w-4" />
-                        Sair
+                    <button onClick={() => { localStorage.clear(); navigate("/"); }} className="w-full flex items-center justify-center lg:justify-start gap-3 px-4 py-3.5 rounded-2xl text-red-500/60 hover:text-red-500 hover:bg-red-500/5 transition-all">
+                        <LogOut className="h-5 w-5" />
+                        <span className="hidden lg:block text-sm font-bold">Log out</span>
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto relative z-10">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10" />
+            <main className="flex-1 overflow-y-auto relative bg-[#0B0F19]">
+                {/* Header */}
+                <header className="sticky top-0 z-30 bg-[#0B0F19]/80 backdrop-blur-xl border-b border-white/5 px-8 flex items-center justify-between h-24">
+                    <div className="fade-in">
+                        <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Your Dashboard</h2>
+                        <p className="text-sm text-white/40 font-medium">Monitor your channels and clips</p>
+                    </div>
 
-                <header className="h-20 border-b border-white/5 flex items-center justify-between px-10 sticky top-0 bg-background/80 backdrop-blur-md z-30">
-                    <h2 className="text-2xl font-display uppercase tracking-wider">
-                        {menuItems.find(m => m.id === activeTab || (activeTab === 'clips' && m.id === 'clips'))?.label || 'Dashboard'}
-                    </h2>
-
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <input
-                                type="text"
-                                placeholder="Buscar clips..."
-                                className="bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-2 text-xs focus:outline-none focus:border-primary/50 w-64 transition-all"
-                            />
-                        </div>
-                        <div className="w-10 h-10 rounded-full bg-gradient-primary p-[1px] glow-effect">
-                            <div className="w-full h-full rounded-full bg-background flex items-center justify-center font-bold text-xs">JD</div>
-                        </div>
+                    <div className="flex items-center gap-3 fade-in">
+                        <button onClick={() => window.location.reload()} className="p-3 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60">
+                            <RefreshCw className="w-5 h-5" />
+                        </button>
+                        <button onClick={() => navigate("/setup/platforms")} className="hidden md:flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold shadow-[0_4px_15px_rgba(168,85,247,0.3)] hover:scale-[1.02] transition-all">
+                            <Share2 className="w-4 h-4" /> Connect Platforms
+                        </button>
+                        <button onClick={handleProcess} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-yellow-500 text-white text-xs font-bold shadow-[0_4px_15px_rgba(236,72,153,0.3)] hover:scale-[1.02] transition-all">
+                            <Plus className="w-4 h-4" /> Add Video
+                        </button>
+                        <button className="hidden lg:flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-500 to-blue-500 text-white text-xs font-bold shadow-[0_4px_15px_rgba(79,70,229,0.3)] hover:scale-[1.02] transition-all">
+                            <CreditCard className="w-4 h-4" /> Renew Subscription
+                        </button>
                     </div>
                 </header>
 
-                <div className="p-10">
-                    {activeTab === "clips" && (
-                        <div className="space-y-10">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <StatCard label="Clips Gerados" value={clips.length.toString()} icon={Video} color="text-primary" />
-                                <StatCard label="Visualizações" value={(clips.reduce((acc, c) => acc + (c.viral_score * 10), 0)).toLocaleString()} icon={TrendingUp} color="text-emerald-500" />
-                                <StatCard label="Horas Salvas" value={`${Math.round(clips.length * 2)}h`} icon={Clock} color="text-amber-500" />
-                                <StatCard label="Score Viral" value={`${clips.length > 0 ? Math.round(clips.reduce((acc, c) => acc + c.viral_score, 0) / clips.length) : 0}%`} icon={Zap} color="text-indigo-500" />
-                            </div>
+                <div className="p-8 lg:p-12 space-y-12">
+                    {/* Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in">
+                        <StatCard label="Connected Channels" value={channels.length.toString()} icon={Youtube} color="red" />
+                        <StatCard label="Platforms Connected" value={platformConfig.enabledPlatforms.length.toString()} icon={Share2} color="purple" />
+                        <StatCard label="Active Runs" value={runs.filter(r => r.percent < 100).length.toString()} icon={PlayCircle} color="pink" />
+                    </div>
 
-                            <div className="glass-card rounded-3xl p-10 border-white/5 bg-gradient-to-br from-primary/5 to-transparent border">
-                                <div className="max-w-2xl">
-                                    <h3 className="text-3xl font-display mb-4">CRIE CLIPS AGORA</h3>
-                                    <p className="text-muted-foreground mb-8 text-sm">Cole a URL de um vídeo do YouTube para que nossa IA determine os melhores momentos.</p>
+                    {/* Tabs / Content Section */}
+                    <div className="fade-in">
+                        <div className="flex items-center gap-1 bg-white/5 border border-white/5 p-1.5 rounded-2xl w-fit mb-10 overflow-x-auto no-scrollbar">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id
+                                            ? "bg-white/10 text-white shadow-md"
+                                            : "text-white/30 hover:text-white"
+                                        }`}
+                                >
+                                    <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? "text-purple-400" : ""}`} />
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
 
-                                    <div className="space-y-3">
-                                        <div className="flex gap-3">
-                                            <div className="flex-1 relative group">
-                                                <input
-                                                    type="text"
-                                                    value={url}
-                                                    onChange={e => {
-                                                        setUrl(e.target.value);
-                                                        if (urlError) setUrlError("");
-                                                    }}
-                                                    placeholder="Cole URL do vídeo ou canal do YouTube..."
-                                                    className={`w-full bg-white/10 border ${urlError ? 'border-red-500/50' : 'border-white/10'} hover:border-white/20 focus:border-primary/50 rounded-2xl px-6 py-4 text-sm focus:outline-none transition-all text-white`}
-                                                />
-                                            </div>
-                                            <Button
-                                                onClick={handleProcess}
-                                                disabled={processing || !url}
-                                                className="h-14 px-10 rounded-2xl bg-primary text-white font-bold glow-effect hover:scale-105 transition-transform border-0 shadow-lg shadow-primary/25"
-                                            >
-                                                {processing ? "Importando..." : "Processar Vídeo"}
-                                            </Button>
-                                        </div>
-                                        <div className="flex justify-between items-center px-2">
-                                            <p className="text-[10px] uppercase font-mono tracking-widest text-zinc-500">
-                                                Ex: youtube.com/watch?v=... ou youtube.com/@Canal
-                                            </p>
-                                            {urlError && (
-                                                <p className="text-[10px] font-bold text-red-500 uppercase tracking-tighter animate-pulse">
-                                                    {urlError}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* TAB CONTENTS */}
+                        {activeTab === 'clips' && (
+                            <div className="space-y-4">
                                 {clips.length > 0 ? (
                                     clips.map(clip => (
-                                        <div key={clip.id} className="glass-card rounded-2xl overflow-hidden border-white/5 hover:border-white/10 transition-all group/card bg-white/[0.02]">
-                                            <div className="aspect-video bg-white/5 relative group overflow-hidden">
+                                        <div key={clip.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.1)] border-gradient-s flex flex-col md:flex-row items-center gap-6 group hover:bg-white/[0.07] transition-all">
+                                            <div className="w-full md:w-56 aspect-video rounded-2xl overflow-hidden relative bg-white/5 border border-white/5 flex-shrink-0">
                                                 {clip.thumbnail ? (
-                                                    <img src={clip.thumbnail} alt={clip.title} className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/5 to-white/10">
-                                                        <Video className="h-8 w-8 text-white/20" />
-                                                    </div>
-                                                )}
-                                                <div
-                                                    onClick={() => window.open(clip.file_url, '_blank')}
-                                                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 cursor-pointer"
-                                                >
-                                                    <PlayCircle className="h-12 w-12 text-white drop-shadow-2xl" />
+                                                    <img src={clip.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                ) : <div className="w-full h-full flex items-center justify-center"><Video className="w-8 h-8 text-white/10" /></div>}
+                                                <div onClick={() => window.open(clip.file_url, '_blank')} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                                                    <PlayCircle className="w-12 h-12 text-white shadow-2xl" />
                                                 </div>
                                             </div>
-                                            <div className="p-5">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="text-[10px] text-primary font-mono tracking-tighter bg-primary/10 px-2 py-0.5 rounded">SCORE: {clip.viral_score}%</div>
-                                                    <div className={`text-[10px] font-mono px-2 py-0.5 rounded ${clip.status === 'done' ? 'text-emerald-400 bg-emerald-500/10' :
-                                                        clip.status === 'processing' ? 'text-amber-400 bg-amber-500/10' :
-                                                            clip.status === 'error' ? 'text-red-400 bg-red-500/10' : 'text-zinc-500 bg-zinc-500/10'
+
+                                            <div className="flex-1 min-w-0 py-2">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md">
+                                                        Viral Score: {clip.viral_score}%
+                                                    </span>
+                                                    <span className={`text-[10px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded-md ${clip.status === 'done' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
                                                         }`}>
-                                                        {clip.status.toUpperCase()}
-                                                    </div>
+                                                        {clip.status}
+                                                    </span>
                                                 </div>
-                                                <h4 className="font-bold text-sm mb-4 line-clamp-1 group-hover/card:text-primary transition-colors">{clip.title}</h4>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest">{clip.channel_name || 'Manual'}</span>
-                                                    {clip.status === 'done' && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            className="h-8 text-xs hover:text-primary border border-white/5 hover:border-primary/20 gap-2"
-                                                            onClick={() => {
-                                                                const a = document.createElement('a');
-                                                                a.href = clip.file_url;
-                                                                a.download = `${clip.title}.mp4`;
-                                                                a.click();
-                                                            }}
-                                                        >
-                                                            <Download className="h-3.3 w-3.5" />
-                                                            Download
-                                                        </Button>
-                                                    )}
+                                                <h3 className="text-lg font-bold truncate group-hover:text-purple-400 transition-colors">{clip.title}</h3>
+                                                <div className="flex items-center gap-4 mt-3 text-white/40 text-xs font-medium">
+                                                    <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Posted by {clip.channel_name || 'Manual'}</div>
+                                                    <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {new Date(clip.created_at).toLocaleDateString()}</div>
                                                 </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 ml-auto px-4">
+                                                <button onClick={() => window.open(clip.file_url, '_blank')} className="p-3 bg-white/5 border border-white/10 rounded-xl hover:text-purple-400 transition-all">
+                                                    <Download className="w-5 h-5" />
+                                                </button>
+                                                <button className="p-3 bg-white/5 border border-white/10 rounded-xl hover:text-white transition-all">
+                                                    <MoreVertical className="w-5 h-5" />
+                                                </button>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="col-span-3 py-20 text-center glass-card rounded-2xl border-dashed border-white/10">
-                                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
-                                            <Video className="h-8 w-8 text-muted-foreground" />
+                                    <div className="py-32 text-center bg-white/[0.02] border border-dashed border-white/10 rounded-[40px]">
+                                        <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center mx-auto mb-6">
+                                            <Video className="w-10 h-10 text-white/20" />
                                         </div>
-                                        <p className="text-muted-foreground font-medium">Nenhum clip gerado ainda.</p>
+                                        <h4 className="text-xl font-bold mb-2 text-white/80">No clips found</h4>
+                                        <p className="text-white/40 max-w-sm mx-auto">Start by adding a YouTube video to generate your first set of social-ready highlight clips.</p>
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {activeTab === "channels" && (
-                        <div className="space-y-6">
-                            <div className="flex justify-between items-center mb-6">
-                                <p className="text-muted-foreground text-sm">Canais do YouTube monitorados automaticamente.</p>
-                                <Button onClick={handleAddChannel} className="bg-primary text-white font-bold rounded-xl px-6">
-                                    <Plus className="h-4 w-4 mr-2" /> Adicionar Canal
-                                </Button>
-                            </div>
-
+                        {activeTab === 'channels' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {channels.map(channel => (
-                                    <div key={channel.id} className="glass-card rounded-2xl p-6 border-white/5 bg-white/[0.02] flex items-center gap-4">
-                                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
-                                            {channel.thumbnail ? (
-                                                <img src={channel.thumbnail} alt={channel.name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-primary bg-primary/10">
-                                                    <Youtube className="h-8 w-8" />
-                                                </div>
-                                            )}
+                                {channels.map(ch => (
+                                    <div key={ch.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-6 shadow-xl border-gradient-s flex items-center gap-5">
+                                        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white/5 border border-white/5 flex-shrink-0">
+                                            {ch.thumbnail ? <img src={ch.thumbnail} className="w-full h-full object-cover" /> : <Youtube className="w-8 h-8 m-4 text-white/20" />}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-sm truncate">{channel.name || channel.title}</h4>
-                                            <p className="text-xs text-muted-foreground mb-2">ID: {channel.youtube_channel_id?.substring(0, 10)}...</p>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`w-1.5 h-1.5 rounded-full ${channel.status === 'active' || channel.is_active ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                                                <span className="text-[10px] font-mono uppercase text-muted-foreground">{channel.status || 'manual'}</span>
+                                            <h4 className="font-bold truncate">{ch.name || ch.title}</h4>
+                                            <div className="flex items-center gap-2 mt-1.5 font-bold">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                <span className="text-[10px] uppercase tracking-wider text-emerald-500">Connected</span>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
-
-                                {channels.length === 0 && (
-                                    <div className="col-span-3 py-20 text-center glass-card rounded-2xl border-dashed border-white/10">
-                                        <p className="text-muted-foreground font-medium">Nenhum canal adicionado ainda.</p>
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {activeTab === "runs" && (
-                        <div className="space-y-6">
-                            {runs.map(run => (
-                                <div key={run.id} className="glass-card rounded-2xl p-6 border-white/5 bg-white/[0.02]">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                                <PlayCircle className="h-6 w-6" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-sm">{run.title || 'Vídeo'}</h4>
-                                                <p className="text-xs text-muted-foreground">{run.message}</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-lg font-display text-primary">{run.percent}%</div>
-                                            <div className="text-[10px] font-mono uppercase text-muted-foreground">{run.step}</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-primary transition-all duration-500 ease-out"
-                                            style={{ width: `${run.percent}%` }}
-                                        />
-                                    </div>
-
-                                    <div className="mt-4 flex items-center gap-4 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${(run.status === "processing" || !run.status) ? "bg-primary" : "bg-emerald-500"}`} />
-                                            {(run.status === "processing" || !run.status) ? "Processando" : "Finalizado"}
-                                        </div>
-                                        <div>#{run.videoId?.substring(0, 8)}</div>
-                                    </div>
-                                </div>
-                            ))}
-
-                            {runs.length === 0 && (
-                                <div className="py-20 text-center glass-card rounded-2xl border-dashed border-white/10">
-                                    <p className="text-muted-foreground font-medium">Nenhuma tarefa ativa no momento.</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {activeTab === "platforms" && (
-                        <div className="space-y-6">
-                            <div className="flex justify-between items-center mb-6">
-                                <p className="text-muted-foreground text-sm">Status da sua integração com o Upload-Post.com</p>
-                                <Button onClick={() => navigate("/setup/platforms")} className="bg-primary text-white font-bold rounded-xl px-6">
-                                    Gerenciar Conexão
-                                </Button>
-                            </div>
-
+                        {activeTab === 'platforms' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {[
-                                    { id: "tiktok", name: "TikTok", icon: Instagram, color: "hover:border-pink-500/50" },
-                                    { id: "instagram", name: "Instagram", icon: Instagram, color: "hover:border-pink-500/50" },
-                                    { id: "youtube", name: "YouTube", icon: Youtube, color: "hover:border-red-500/50" },
-                                    { id: "facebook", name: "Facebook", icon: Facebook, color: "hover:border-blue-500/50" },
+                                    { id: "youtube", name: "YouTube Shorts", icon: Youtube, color: "red" },
+                                    { id: "tiktok", name: "TikTok", icon: Music, color: "cyan" },
+                                    { id: "instagram", name: "Instagram Reels", icon: Instagram, color: "pink" },
+                                    { id: "facebook", name: "Facebook", icon: Facebook, color: "blue" },
                                 ].map(p => {
                                     const isEnabled = platformConfig.enabledPlatforms.includes(p.id);
                                     return (
-                                        <div key={p.id} className={`glass-card rounded-2xl p-8 border-white/5 bg-white/[0.02] transition-all ${p.color}`}>
+                                        <div key={p.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-xl border-gradient-s flex flex-col group">
                                             <div className="flex items-center justify-between mb-8">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
-                                                        <p.icon className="h-6 w-6" />
+                                                <div className="flex items-center gap-5">
+                                                    <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center transition-transform group-hover:scale-110">
+                                                        <p.icon className="w-7 h-7" />
                                                     </div>
-                                                    <h4 className="text-xl font-display">{p.name}</h4>
+                                                    <div>
+                                                        <h4 className="text-xl font-bold">{p.name}</h4>
+                                                        <p className="text-white/40 text-xs mt-1">Status: {isEnabled ? 'Active' : 'Not Connected'}</p>
+                                                    </div>
                                                 </div>
-                                                {isEnabled ? (
-                                                    <span className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full uppercase">
-                                                        Ativado
-                                                    </span>
-                                                ) : (
-                                                    <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground bg-white/5 px-3 py-1 rounded-full uppercase">
-                                                        Desativado
-                                                    </span>
-                                                )}
+                                                <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isEnabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-white/40'}`}>
+                                                    {isEnabled ? 'Live' : 'Inactive'}
+                                                </div>
                                             </div>
-                                            <p className="text-xs text-muted-foreground mb-0">
-                                                {isEnabled ? "Postagens automáticas ativadas para clips virais." : "Não configurado para postagem automática."}
-                                            </p>
+                                            <button className="w-full py-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 font-bold text-xs transition-all uppercase tracking-[0.2em]">Manage Connection</button>
                                         </div>
                                     );
                                 })}
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {activeTab === 'runs' && (
+                            <div className="space-y-4">
+                                {runs.map(run => (
+                                    <div key={run.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-xl border-gradient-s">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className="flex items-center gap-5">
+                                                <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center">
+                                                    <PlayCircle className="w-7 h-7 text-purple-400 animate-pulse" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-lg font-bold">{run.title || 'Agent Processing Video...'}</h4>
+                                                    <p className="text-white/40 text-sm mt-1">{run.message}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-3xl font-bold text-purple-400">{run.percent}%</div>
+                                                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/20">{run.step}</div>
+                                            </div>
+                                        </div>
+                                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 transition-all duration-700 ease-out" style={{ width: `${run.percent}%` }} />
+                                        </div>
+                                    </div>
+                                ))}
+                                {runs.length === 0 && <div className="py-20 text-center text-white/20 font-bold uppercase tracking-widest bg-white/[0.01] rounded-[40px] border border-dashed border-white/5">No active runs</div>}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </main>
+
+            <style>{`
+                .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                .border-gradient-s { position: relative; }
+                .border-gradient-s::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                @keyframes loading-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+            `}</style>
         </div>
     );
 }
+
+const Music = Share2; // Fallback for lucide icon

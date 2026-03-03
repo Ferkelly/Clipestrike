@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import DashboardPage from "./pages/DashboardPage";
+import RedirectPage from "./pages/RedirectPage";
 import { LoginPage, SignupPage } from "./pages/AuthPages";
 import { ConnectChannelPage } from "./pages/SetupPages";
 import SetupPlatformsPage from "./pages/SetupPlatformsPage";
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/auth/redirect" element={<RedirectPage />} />
 
         {/* Onboarding */}
         <Route path="/setup/channel" element={
