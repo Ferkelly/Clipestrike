@@ -82,7 +82,7 @@ const db = {
   async createVideo(videoData) {
     const { data, error } = await supabase
       .from('videos')
-      .insert([videoData])
+      .upsert(videoData, { onConflict: 'youtube_video_id' })
       .select()
       .single();
     if (error) throw error;
