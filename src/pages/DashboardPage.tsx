@@ -302,14 +302,14 @@ export default function DashboardPage() {
 
                 <div className="mt-auto p-8 pt-4 border-t border-white/5">
                     <button
-                        onClick={() => navigate("/setup/platforms")}
+                        onClick={() => navigate("/settings")}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground w-full transition-all"
                     >
                         <Settings className="h-4 w-4" />
                         Configurações
                     </button>
                     <button
-                        onClick={() => { localStorage.removeItem("token"); navigate("/login"); }}
+                        onClick={() => { localStorage.clear(); navigate("/"); }}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 w-full transition-all"
                     >
                         <LogOut className="h-4 w-4" />
@@ -399,8 +399,8 @@ export default function DashboardPage() {
                                                 <div className="flex items-center justify-between mb-2">
                                                     <div className="text-[10px] text-primary font-mono tracking-tighter bg-primary/10 px-2 py-0.5 rounded">SCORE: {clip.viral_score}%</div>
                                                     <div className={`text-[10px] font-mono px-2 py-0.5 rounded ${clip.status === 'done' ? 'text-emerald-400 bg-emerald-500/10' :
-                                                            clip.status === 'processing' ? 'text-amber-400 bg-amber-500/10' :
-                                                                clip.status === 'error' ? 'text-red-400 bg-red-500/10' : 'text-zinc-500 bg-zinc-500/10'
+                                                        clip.status === 'processing' ? 'text-amber-400 bg-amber-500/10' :
+                                                            clip.status === 'error' ? 'text-red-400 bg-red-500/10' : 'text-zinc-500 bg-zinc-500/10'
                                                         }`}>
                                                         {clip.status.toUpperCase()}
                                                     </div>

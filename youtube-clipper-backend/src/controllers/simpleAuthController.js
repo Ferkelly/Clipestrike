@@ -79,4 +79,63 @@ const emailLogin = async (req, res) => {
     }
 };
 
-module.exports = { register, emailLogin };
+// PUT /api/auth/profile → Atualizar perfil
+const updateProfile = async (req, res) => {
+    try {
+        const { name, email } = req.body;
+        const userId = req.user.id;
+
+        const updates = {};
+        if (name) updates.name = name;
+        if (email) updates.email = email;
+
+        const user = await db.updateUser(userId, updates);
+        res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar } });
+    } catch (err) {
+        logger.error(`UpdateProfile error: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// PUT /api/auth/password → Alterar senha
+const updatePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user.id;
+
+        // Buscar usuário para verificar senha atual
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        if (error || !user) return res.status(404).json({ error: 'Usuário não encontrado.' });
+        if (!user.password_hash) return res.status(400).json({ error: 'Conta via Google não pode alterar senha por aqui.' });
+
+        const valid = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!valid) return res.status(401).json({ error: 'Senha atual incorreta.' });
+
+        const password_hash = await bcrypt.hash(newPassword, 10);
+        await db.updateUser(userId, { password_hash });
+
+        res.json({ success: true, message: 'Senha alterada com sucesso.' });
+    } catch (err) {
+        logger.error(`UpdatePassword error: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// DELETE /api/auth/account → Excluir conta
+const deleteAccount = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        await db.deleteUser(userId);
+        res.json({ success: true, message: 'Conta excluída com sucesso.' });
+    } catch (err) {
+        logger.error(`DeleteAccount error: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+module.exports = { register, emailLogin, updateProfile, updatePassword, deleteAccount };

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { googleLogin, googleCallback, getMe, logout } = require('../controllers/authController');
-const { register, emailLogin } = require('../controllers/simpleAuthController');
+const { register, emailLogin, updateProfile, updatePassword, deleteAccount } = require('../controllers/simpleAuthController');
 const { authenticate } = require('../middleware/auth');
 
 // GET  /api/auth/google           → Iniciar OAuth
@@ -17,6 +17,11 @@ router.post('/logout', authenticate, logout);
 router.post('/register', register);
 // POST /api/auth/login → Login com email/senha
 router.post('/login', emailLogin);
+
+// NOVAS ROTAS DE CONFIGURAÇÃO
+router.put('/profile', authenticate, updateProfile);
+router.put('/password', authenticate, updatePassword);
+router.delete('/account', authenticate, deleteAccount);
 
 module.exports = router;
 

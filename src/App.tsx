@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage";
 import { LoginPage, SignupPage } from "./pages/AuthPages";
 import { ConnectChannelPage } from "./pages/SetupPages";
 import SetupPlatformsPage from "./pages/SetupPlatformsPage";
+import SettingsPage from "./pages/SettingsPage";
 import { Zap } from "lucide-react";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -45,6 +46,8 @@ export default function App() {
         } />
 
         {/* App */}
+        <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+        <Route path="/dashboard/configuracoes" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
         <Route path="/dashboard/*" element={
           <PrivateRoute><DashboardPage /></PrivateRoute>
         } />

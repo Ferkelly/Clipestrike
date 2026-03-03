@@ -11,6 +11,7 @@ const videoRoutes = require('./routes/videos');
 const clipRoutes = require('./routes/clips');
 const monitorRoutes = require('./routes/monitor');
 const autoPostRoutes = require('./routes/autoPost');
+const userRoutes = require('./routes/user');
 
 const { startMonitorCron } = require('./jobs/monitorCron');
 
@@ -56,6 +57,7 @@ app.use('/api/videos', videoRoutes);
 app.use('/api/clips', clipRoutes);
 app.use('/api/monitor', monitorRoutes);
 app.use('/api/autopost', autoPostRoutes);
+app.use('/api/user', userRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

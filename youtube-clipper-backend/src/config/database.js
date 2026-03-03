@@ -28,6 +28,26 @@ const db = {
     return data;
   },
 
+  async updateUser(userId, userData) {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ ...userData, updated_at: new Date() })
+      .eq('id', userId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteUser(userId) {
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+    if (error) throw error;
+    return true;
+  },
+
   // Canais
   async createChannel(channelData) {
     const { data, error } = await supabase
