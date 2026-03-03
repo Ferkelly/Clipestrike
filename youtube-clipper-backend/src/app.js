@@ -16,6 +16,7 @@ const platformRoutes = require('./routes/platform');
 const webhookRoutes = require('./routes/webhookRoutes');
 const analyticsRoutes = require('./routes/analytics');
 const downloadRoutes = require('./routes/downloadRoutes');
+const videoUploadRoutes = require('./routes/videoUploadRoutes');
 const { notifier } = require('./services/webhookService');
 
 const { startMonitorCron } = require('./jobs/monitorCron');
@@ -100,11 +101,14 @@ app.use('/api/download', downloadRoutes);
 app.use('/api/videos', videoUploadRoutes);
 
 // Health check (Ambas as rotas para evitar erro 404)
-app.get('/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date(), environment: process.env.NODE_ENV });
-});
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date(), environment: process.env.NODE_ENV });
+app.get(['/health', '/api/health'], (req, res) => {
+    res.json({
+        status: 'ok',
+        uptime: process.uptime(),
+        memory: process.memoryUsage().heapUsed,
+        time: new Date().toISOString(),
+        environment: process.env.NODE_ENV
+    });
 });
 
 // Error handler

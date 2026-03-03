@@ -1,4 +1,14 @@
 require('dotenv').config();
+
+// Evita que erros não tratados derrubem o servidor
+process.on("uncaughtException", (err) => {
+    console.error("[FATAL] uncaughtException:", err.message, err.stack);
+});
+
+process.on("unhandledRejection", (reason) => {
+    console.error("[FATAL] unhandledRejection:", reason);
+});
+
 const { httpServer } = require('./src/app');
 
 const { startMonitorCron } = require('./src/jobs/monitorCron');
