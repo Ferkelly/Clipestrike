@@ -17,6 +17,11 @@ const notifier = new YoutubeNotifier({
 notifier.on("notified", async (data) => {
     const { channel, video } = data;
 
+    if (!channel || !video || !channel.id || !video.id) {
+        console.warn("[Webhook] Notification recebida mas dados incompletos:", data);
+        return;
+    }
+
     console.log(`[Webhook] 🔔 Novo vídeo detectado!`);
     console.log(`  Canal:  ${channel.name} (${channel.id})`);
     console.log(`  Vídeo:  ${video.title} (${video.id})`);
@@ -101,12 +106,21 @@ notifier.on("notified", async (data) => {
 });
 
 notifier.on("subscribe", (data) => {
-    const channelId = data.feed.split("channel_id=")[1];
-    console.log(`[Webhook] ✅ Inscrito no canal: ${channelId}`);
+    try {
+        const channelId = (data && data.feed) ? data.feed.split("channel_id=")[1] : "unknown";
+        console.log(`[Webhook] ✅ Inscrito no canal: ${channelId}`);
+    } catch (err) {
+        console.log(`[Webhook] Erro ao processar evento subscribe:`, err.message);
+    }
 });
 
 notifier.on("unsubscribe", (data) => {
-    console.log(`[Webhook] ❌ Desinscrito do canal: ${data.feed}`);
+    try {
+        const feed = (data && data.feed) ? data.feed : "unknown";
+        console.log(`[Webhook] ❌ Desinscrito do canal: ${feed}`);
+    } catch (err) {
+        console.log(`[Webhook] Erro ao processar evento unsubscribe:`, err.message);
+    }
 });
 
 // Inscreve o servidor para receber notificações de um canal

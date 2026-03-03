@@ -100,6 +100,9 @@ app.get('/api/health', (req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
+    if (res.headersSent) {
+        return next(err);
+    }
     res.status(500).json({ error: 'Algo deu errado!' });
 });
 
