@@ -225,8 +225,8 @@ export default function DashboardPage() {
                 alert(data.error || "Erro ao processar vídeo");
             }
         } catch (err) {
-            console.error("Erro no processamento:", err);
-            alert("Falha de conexão com o servidor.");
+            console.error("Erro no processamento (Network/CORS):", err);
+            alert("Falha de conexão com o servidor. Verifique se o backend está rodando e se a VITE_API_URL está correta.");
         } finally {
             setProcessing(false);
         }
