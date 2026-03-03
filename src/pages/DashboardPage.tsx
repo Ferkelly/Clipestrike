@@ -198,10 +198,12 @@ export default function DashboardPage() {
     const handleProcess = async () => {
         if (!url) return;
 
-        // Validation
+        // Validação: deve ser um VÍDEO do YouTube, não um canal
+        const isVideo = url.includes("watch?v=") || url.includes("youtu.be/");
         const ytRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
-        if (!ytRegex.test(url)) {
-            alert("Por favor, insira uma URL válida do YouTube (youtube.com ou youtu.be)");
+
+        if (!ytRegex.test(url) || !isVideo) {
+            alert("Por favor, insira uma URL de VÍDEO válida (ex: youtube.com/watch?v=...). Para canais, use a aba Canais.");
             return;
         }
 
