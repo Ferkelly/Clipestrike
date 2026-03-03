@@ -112,8 +112,60 @@ export default function DashboardPage() {
     const [clips, setClips] = useState<Clip[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [runs, setRuns] = useState<VideoJob[]>([]);
-    const [platformConfig, setPlatformConfig] = useState<{ configured: boolean, enabledPlatforms: string[] }>({ configured: false, enabledPlatforms: [] });
+    const [platformConfig, setPlatformConfig] = useState<{
+        configured: boolean;
+        enabledPlatforms: string[];
+        uploadPostUser?: string;
+        autoPost?: boolean;
+    }>({ configured: false, enabledPlatforms: [] });
     const [loading, setLoading] = useState(true);
+
+    // ── Upload-Post Modal ────────────────────────────────────────────────────
+    const [showPlatformModal, setShowPlatformModal] = useState(false);
+    const [modalUsername, setModalUsername] = useState("");
+    const [modalPlatforms, setModalPlatforms] = useState<string[]>([]);
+    const [modalAutoPost, setModalAutoPost] = useState(true);
+    const [modalSaving, setModalSaving] = useState(false);
+    const [modalError, setModalError] = useState("");
+    const [modalSuccess, setModalSuccess] = useState("");
+
+    const openPlatformModal = () => {
+        setModalUsername(platformConfig.uploadPostUser || "");
+        setModalPlatforms(platformConfig.enabledPlatforms || []);
+        setModalAutoPost(platformConfig.autoPost !== false);
+        setModalError("");
+        setModalSuccess("");
+        setShowPlatformModal(true);
+    };
+
+    const toggleModalPlatform = (id: string) => {
+        setModalPlatforms(prev =>
+            prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+        );
+    };
+
+    const handleSavePlatforms = async () => {
+        if (!modalUsername.trim()) { setModalError("Informe seu username do Upload-Post."); return; }
+        if (modalPlatforms.length === 0) { setModalError("Selecione ao menos uma plataforma."); return; }
+        setModalSaving(true); setModalError(""); setModalSuccess("");
+        try {
+            const token = localStorage.getItem("clipstrike_token");
+            const res = await fetch(`${API_URL}/autopost/platforms/config`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ uploadPostUser: modalUsername.trim(), enabledPlatforms: modalPlatforms, autoPost: modalAutoPost }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Erro ao salvar");
+            setPlatformConfig({ configured: true, enabledPlatforms: modalPlatforms, uploadPostUser: modalUsername.trim(), autoPost: modalAutoPost });
+            setModalSuccess("Salvo com sucesso! ✅");
+            setTimeout(() => setShowPlatformModal(false), 1000);
+        } catch (err: any) {
+            setModalError(err.message);
+        } finally {
+            setModalSaving(false);
+        }
+    };
 
     const fetchClips = async () => {
         try {
@@ -152,7 +204,12 @@ export default function DashboardPage() {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await res.json();
-            setPlatformConfig({ configured: data.configured, enabledPlatforms: data.enabledPlatforms });
+            setPlatformConfig({
+                configured: data.configured,
+                enabledPlatforms: data.enabledPlatforms || [],
+                uploadPostUser: data.uploadPostUser || "",
+                autoPost: data.autoPost !== false,
+            });
         } catch (err) {
             console.error("Erro ao buscar status de plataformas:", err);
         }
@@ -397,34 +454,96 @@ export default function DashboardPage() {
                         )}
 
                         {activeTab === 'platforms' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {[
-                                    { id: "youtube", name: "YouTube Shorts", icon: Youtube, color: "red" },
-                                    { id: "tiktok", name: "TikTok", icon: Music, color: "cyan" },
-                                    { id: "instagram", name: "Instagram Reels", icon: Instagram, color: "pink" },
-                                    { id: "facebook", name: "Facebook", icon: Facebook, color: "blue" },
-                                ].map(p => {
-                                    const isEnabled = platformConfig.enabledPlatforms.includes(p.id);
-                                    return (
-                                        <div key={p.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-xl border-gradient-s flex flex-col group">
-                                            <div className="flex items-center justify-between mb-8">
-                                                <div className="flex items-center gap-5">
-                                                    <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center transition-transform group-hover:scale-110">
-                                                        <p.icon className="w-7 h-7" />
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-xl font-bold">{p.name}</h4>
-                                                        <p className="text-white/40 text-xs mt-1">Status: {isEnabled ? 'Ativo' : 'Não Conectado'}</p>
-                                                    </div>
-                                                </div>
-                                                <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isEnabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-white/40'}`}>
-                                                    {isEnabled ? 'Online' : 'Inativo'}
-                                                </div>
+                            <div className="space-y-8">
+                                {/* Upload-Post banner */}
+                                <div className="bg-gradient-to-r from-primary/10 to-orange-500/5 border border-primary/20 rounded-3xl p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                                                <Share2 className="w-5 h-5 text-primary" />
                                             </div>
-                                            <button className="w-full py-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 font-bold text-xs transition-all uppercase tracking-[0.2em]">Gerenciar Conexão</button>
+                                            <h3 className="text-lg font-bold">Upload-Post.com</h3>
                                         </div>
-                                    );
-                                })}
+                                        <p className="text-white/50 text-sm max-w-md">
+                                            Conecte suas redes sociais pelo Upload-Post, copie seu username e cole abaixo para publicar automaticamente.
+                                        </p>
+                                        {platformConfig.uploadPostUser && (
+                                            <div className="mt-3 flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                <span className="text-xs text-emerald-400 font-bold">{platformConfig.uploadPostUser} — {platformConfig.enabledPlatforms.length} plataforma(s) ativa(s)</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-3 flex-shrink-0">
+                                        <button
+                                            onClick={() => window.open("https://app.upload-post.com", "_blank")}
+                                            className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all"
+                                        >
+                                            Abrir Upload-Post ↗
+                                        </button>
+                                        <button
+                                            onClick={openPlatformModal}
+                                            className="px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all"
+                                        >
+                                            {platformConfig.configured ? "Editar Configuração" : "Configurar Agora"}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Platform grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {[
+                                        { id: "youtube", name: "YouTube Shorts", icon: Youtube },
+                                        { id: "tiktok", name: "TikTok", icon: Music },
+                                        { id: "instagram", name: "Instagram Reels", icon: Instagram },
+                                        { id: "facebook", name: "Facebook", icon: Facebook },
+                                    ].map(p => {
+                                        const isEnabled = platformConfig.enabledPlatforms.includes(p.id);
+                                        return (
+                                            <div key={p.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-xl border-gradient-s flex flex-col group">
+                                                <div className="flex items-center justify-between mb-8">
+                                                    <div className="flex items-center gap-5">
+                                                        <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center transition-transform group-hover:scale-110">
+                                                            <p.icon className="w-7 h-7" />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-xl font-bold">{p.name}</h4>
+                                                            <p className="text-white/40 text-xs mt-1">{isEnabled ? 'Publicação automática ativa' : 'Não configurado'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isEnabled
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                        : 'bg-white/5 text-white/30 border-white/10'
+                                                        }`}>
+                                                        {isEnabled ? 'CONECTADO' : 'INATIVO'}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={openPlatformModal}
+                                                    className="w-full py-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 font-bold text-xs transition-all uppercase tracking-[0.2em]"
+                                                >
+                                                    {isEnabled ? 'Editar Conexão' : 'Gerenciar Conexão'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* auto-post info */}
+                                {platformConfig.configured && (
+                                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl px-6 py-4 flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-bold">Publicação Automática</p>
+                                            <p className="text-xs text-white/40 mt-0.5">Clips são publicados automaticamente ao serem gerados</p>
+                                        </div>
+                                        <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${platformConfig.autoPost
+                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                            : 'bg-white/5 text-white/30 border-white/10'
+                                            }`}>
+                                            {platformConfig.autoPost ? 'LIGADO' : 'DESLIGADO'}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -458,6 +577,107 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </main>
+
+            {/* ── Upload-Post Config Modal ───────────────────────────────── */}
+            {showPlatformModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowPlatformModal(false)}>
+                    <div className="w-full max-w-lg bg-[#111419] border border-white/10 rounded-3xl p-8 shadow-[0_25px_60px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                                    <Share2 className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold">Configurar Plataformas</h3>
+                                    <p className="text-xs text-white/40">via Upload-Post.com</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowPlatformModal(false)} className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-all">✕</button>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 mb-6 text-sm text-white/50 leading-relaxed">
+                            <span className="text-primary font-bold">Como funciona:</span> Acesse{" "}
+                            <button onClick={() => window.open("https://app.upload-post.com", "_blank")} className="text-primary underline underline-offset-2">app.upload-post.com</button>,
+                            {" "}faça login, conecte suas redes (TikTok, Instagram, etc.) e copie seu <strong className="text-white">username</strong>.
+                        </div>
+
+                        {/* Username */}
+                        <div className="space-y-2 mb-6">
+                            <label className="text-xs font-bold uppercase tracking-widest text-white/40">Seu Username no Upload-Post</label>
+                            <input
+                                type="text"
+                                value={modalUsername}
+                                onChange={e => setModalUsername(e.target.value)}
+                                placeholder="ex: meu-usuario"
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-white/20"
+                            />
+                        </div>
+
+                        {/* Platform Checkboxes */}
+                        <div className="mb-6">
+                            <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-3 block">Plataformas para Publicar</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {[
+                                    { id: "tiktok", name: "TikTok" },
+                                    { id: "instagram", name: "Instagram Reels" },
+                                    { id: "youtube", name: "YouTube Shorts" },
+                                    { id: "facebook", name: "Facebook" },
+                                ].map(p => {
+                                    const checked = modalPlatforms.includes(p.id);
+                                    return (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => toggleModalPlatform(p.id)}
+                                            className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-bold transition-all ${checked
+                                                    ? "bg-primary/10 border-primary/40 text-white"
+                                                    : "bg-white/[0.02] border-white/10 text-white/40 hover:border-white/20"
+                                                }`}
+                                        >
+                                            <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? "bg-primary border-primary" : "border-white/20"}`}>
+                                                {checked && <span className="text-white text-[10px]">✓</span>}
+                                            </div>
+                                            {p.name}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Auto-post Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-xl mb-6">
+                            <div>
+                                <p className="text-sm font-bold">Publicar automaticamente</p>
+                                <p className="text-xs text-white/40 mt-0.5">Quando um clip ficar pronto, publicar nas redes imediatamente</p>
+                            </div>
+                            <button
+                                onClick={() => setModalAutoPost(v => !v)}
+                                className={`w-12 h-6 rounded-full transition-all relative flex-shrink-0 ${modalAutoPost ? "bg-primary" : "bg-white/10"}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow ${modalAutoPost ? "left-7" : "left-1"}`} />
+                            </button>
+                        </div>
+
+                        {/* Feedback */}
+                        {modalError && <div className="mb-4 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 font-bold">{modalError}</div>}
+                        {modalSuccess && <div className="mb-4 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 font-bold">{modalSuccess}</div>}
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowPlatformModal(false)} className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 transition-all">
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSavePlatforms}
+                                disabled={modalSaving}
+                                className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.01] transition-all disabled:opacity-50"
+                            >
+                                {modalSaving ? "Salvando..." : "Salvar Configuração"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .fade-in { animation: fadeIn 0.8s ease-out forwards; }
