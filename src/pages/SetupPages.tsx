@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Zap, Check, Trash2, Youtube, Music, Instagram, Facebook } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Zap, Check, Trash2, Youtube, AlertCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -10,43 +10,55 @@ function SetupLayout({ step, title, subtitle, children }: {
 }) {
     const navigate = useNavigate();
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans flex flex-col relative overflow-hidden">
-            {/* Background Effects (Matching Hero) */}
+        <div className="min-h-screen bg-[#0B0F19] text-white font-sans flex flex-col relative overflow-hidden">
+            {/* Background Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] opacity-30 mix-blend-screen" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[120px] opacity-30 mix-blend-screen" />
+                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] opacity-20 mix-blend-screen" />
             </div>
 
-            <nav className="relative z-50 flex items-center justify-between px-8 h-20 border-b border-white/5 bg-background/50 backdrop-blur-md">
+            <nav className="relative z-50 flex items-center justify-between px-8 h-20 border-b border-white/5 bg-black/20 backdrop-blur-md">
                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
-                    <Zap className="h-6 w-6 text-primary animate-flicker" fill="currentColor" />
-                    <span className="font-display text-2xl tracking-wider pt-1">CLIPSTRIKE</span>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+                        <Zap className="h-5 w-5 text-white" fill="currentColor" />
+                    </div>
+                    <span className="font-display text-xl font-bold tracking-tight bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 bg-clip-text text-transparent pt-1">
+                        EasySlice.AI
+                    </span>
                 </div>
 
                 {/* Step indicator */}
                 <div className="flex items-center gap-4">
-                    <div className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest ${step >= 1 ? "text-primary" : "text-muted-foreground"}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold transition-colors ${step >= 1 ? "bg-primary text-white" : "bg-white/5 text-muted-foreground"}`}>1</div>
-                        <span className="hidden sm:inline">Canais</span>
+                    <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors ${step >= 1 ? "text-purple-400" : "text-white/20"}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${step >= 1 ? "bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]" : "bg-white/5 text-white/20"}`}>1</div>
+                        <span className="hidden sm:inline">Channels</span>
                     </div>
-                    <div className={`w-12 h-px ${step >= 2 ? "bg-primary" : "bg-white/10"}`} />
-                    <div className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest ${step >= 2 ? "text-primary" : "text-muted-foreground"}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold transition-colors ${step >= 2 ? "bg-primary text-white" : "bg-white/5 text-muted-foreground"}`}>2</div>
-                        <span className="hidden sm:inline">Redes</span>
+                    <div className={`w-10 h-px transition-colors ${step >= 2 ? "bg-purple-500" : "bg-white/10"}`} />
+                    <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors ${step >= 2 ? "text-purple-400" : "text-white/20"}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${step >= 2 ? "bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]" : "bg-white/5 text-white/20"}`}>2</div>
+                        <span className="hidden sm:inline">Platforms</span>
                     </div>
                 </div>
 
                 <div className="w-24 hidden sm:block" />
             </nav>
 
-            <div className="flex-1 relative z-10 flex flex-col items-center px-6 pt-12 pb-16">
+            <div className="flex-1 relative z-10 flex flex-col items-center px-6 pt-16 pb-20">
                 <div className="w-full max-w-2xl">
-                    <div className="text-center mb-12">
-                        <h1 className="text-4xl md:text-5xl font-display tracking-tight mb-4">{title}</h1>
-                        <p className="text-muted-foreground max-w-md mx-auto leading-relaxed">{subtitle}</p>
+                    <div className="text-center mb-12 fade-in">
+                        <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{title}</h1>
+                        <p className="text-white/50 max-w-md mx-auto leading-relaxed text-sm">{subtitle}</p>
                     </div>
                     {children}
                 </div>
             </div>
+
+            <style>{`
+                .fade-in { animation: fadeIn 0.6s ease-out forwards; }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+                .border-gradient-s { position: relative; }
+                .border-gradient-s::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+            `}</style>
         </div>
     );
 }
@@ -74,7 +86,7 @@ export function ConnectChannelPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Erro ao conectar canal");
             setChannels(prev => [...prev, data]);
-            setSuccess(`Canal "${data.name}" conectado! O ClipStrike vai monitorá-lo automaticamente.`);
+            setSuccess(`Channel "${data.name}" connected!`);
             setUrl("");
         } catch (err: any) {
             setError(err.message);
@@ -95,75 +107,96 @@ export function ConnectChannelPage() {
     return (
         <SetupLayout
             step={1}
-            title="CONECTE SEUS CANAIS"
-            subtitle="Adicione os canais que quer monitorar. O ClipStrike detecta novos uploads automaticamente."
+            title="Connect Your Channels"
+            subtitle="Add YouTube channels you want to monitor. EasySliceAI will automatically detect when a new video is uploaded and create clips for you."
         >
-            <div className="glass-card rounded-2xl p-8 border-gradient mb-8">
-                <div className="flex items-center gap-3 mb-8">
-                    <div className="w-10 h-10 rounded-lg bg-red-600/20 flex items-center justify-center">
-                        <Youtube className="text-red-600 h-6 w-6" />
+            <div className="space-y-6 fade-in">
+                <div className="bg-white/5 border border-white/10 backdrop-blur-2xl rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-gradient-s">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                            <Youtube className="text-red-500 h-6 w-6" />
+                        </div>
+                        <h2 className="text-xl font-bold tracking-tight">Add YouTube Channel</h2>
                     </div>
-                    <h2 className="text-xl font-display">Adicionar Canal do YouTube</h2>
-                </div>
 
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">URL do Canal</label>
-                        <div className="relative">
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 ml-1">YouTube Channel URL</label>
                             <input
                                 type="text"
                                 value={url}
                                 onChange={e => setUrl(e.target.value)}
                                 onKeyDown={e => e.key === "Enter" && handleConnect()}
-                                placeholder="https://youtube.com/@SeuCanal"
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                                placeholder="https://youtube.com/@ChannelName"
+                                className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-white/20"
                             />
                         </div>
+
+                        {success && <div className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-2"><Check className="h-4 w-4" /> {success}</div>}
+                        {error && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-2"> {error}</div>}
+
+                        <button
+                            onClick={handleConnect}
+                            disabled={loading || !url.trim()}
+                            className="w-full h-14 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:scale-[1.01] transition-all disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
+                        >
+                            {loading ? "Connecting..." : "+ Connect Channel"}
+                        </button>
                     </div>
 
-                    {success && <div className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-2"><Check className="h-4 w-4" /> {success}</div>}
-                    {error && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center gap-2"> {error}</div>}
-
-                    <Button
-                        onClick={handleConnect}
-                        disabled={loading || !url.trim()}
-                        className="w-full h-14 rounded-xl bg-gradient-primary text-white font-bold glow-effect hover:scale-[1.01] transition-transform border-0"
-                    >
-                        {loading ? "Conectando..." : "+ Conectar Canal"}
-                    </Button>
+                    <div className="mt-10 pt-8 border-t border-white/5">
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 mb-5 ml-1">Connected Channels</h3>
+                        {channels.length === 0 ? (
+                            <div className="text-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10">
+                                <p className="text-sm text-white/30">No Channels Connected</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {channels.map(ch => (
+                                    <div key={ch.id} className="flex items-center justify-between bg-white/5 border border-white/5 rounded-2xl px-5 py-4 group hover:border-white/10 transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center"><Youtube className="h-5 w-5 text-red-500" /></div>
+                                            <div>
+                                                <div className="text-sm font-bold text-white">{ch.name}</div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500/80">Connected</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handleRemove(ch.id)} className="p-2.5 bg-white/5 rounded-xl text-white/30 hover:text-red-500 hover:bg-red-500/10 transition-all">
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {channels.length > 0 && (
-                    <div className="mt-10 border-t border-white/5 pt-8">
-                        <h3 className="text-sm font-mono uppercase tracking-widest text-muted-foreground mb-4">Canais Conectados ({channels.length})</h3>
-                        <div className="space-y-3">
-                            {channels.map(ch => (
-                                <div key={ch.id} className="flex items-center justify-between bg-white/5 border border-white/5 rounded-xl px-5 py-4 group hover:border-white/10 transition-colors">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-red-600/10 flex items-center justify-center"><Youtube className="h-4 w-4 text-red-600" /></div>
-                                        <div>
-                                            <div className="text-sm font-bold text-foreground">{ch.name}</div>
-                                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">{ch.url}</div>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => handleRemove(ch.id)} className="p-2 text-muted-foreground hover:text-red-500 transition-colors">
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            ))}
+                <button
+                    onClick={() => navigate("/setup/platforms")}
+                    className="w-full h-14 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:scale-[1.01] transition-all"
+                >
+                    Continue to Platform Setup →
+                </button>
+
+                {/* Warning Card */}
+                <div className="bg-yellow-500/10 border border-yellow-500/20 backdrop-blur-xl rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-gradient-s">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                            <AlertCircle className="text-yellow-500 h-6 w-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-yellow-500">Fix Channel Limit Issue</h3>
+                            <p className="text-xs text-yellow-500/60 mt-0.5">Some accounts may experience limitations connecting multiple channels.</p>
                         </div>
                     </div>
-                )}
+                    <button className="whitespace-nowrap px-6 py-2.5 bg-yellow-500 text-black text-xs font-bold rounded-xl hover:bg-yellow-400 transition-colors">
+                        Fix Channel Limits
+                    </button>
+                </div>
             </div>
-
-            <button
-                onClick={() => navigate("/setup/platforms")}
-                className="w-full py-4 text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
-            >
-                Continuar para Redes Sociais →
-            </button>
         </SetupLayout>
     );
 }
-
-
