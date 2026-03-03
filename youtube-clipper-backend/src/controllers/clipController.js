@@ -324,6 +324,31 @@ class ClipController {
         }
     }
 
+    // Atualizar título/descrição de um clip
+    async updateClip(req, res) {
+        const { title, description } = req.body;
+        const { clipId } = req.params;
+
+        try {
+            const { data, error } = await supabase
+                .from('clips')
+                .update({
+                    title,
+                    description,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', clipId)
+                .eq('user_id', req.user.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            res.json(data);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
     // Deletar clip
     async deleteClip(req, res) {
         try {

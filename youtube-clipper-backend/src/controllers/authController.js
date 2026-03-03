@@ -59,7 +59,19 @@ const googleCallback = async (req, res) => {
 
 // GET /api/auth/me → Dados do usuário logado
 const getMe = (req, res) => {
-    res.json({ user: req.user });
+    const user = req.user;
+    res.json({
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            plan: user.plan || 'free',
+            avatar: user.avatar,
+            isGoogleLogin: !!user.google_id,
+            google_id: user.google_id,
+            created_at: user.created_at
+        }
+    });
 };
 
 // POST /api/auth/logout

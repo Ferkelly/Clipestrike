@@ -2,6 +2,7 @@ require('dotenv').config();
 const { httpServer } = require('./src/app');
 
 const { startMonitorCron } = require('./src/jobs/monitorCron');
+const { startWebhookRenewalCron } = require('./src/jobs/renewalCron');
 
 const PORT = process.env.PORT || 5000;
 
@@ -15,4 +16,7 @@ httpServer.listen(PORT, () => {
 
     // Inicia o monitoramento automático de canais (Fallback)
     startMonitorCron();
+
+    // Inicia a renovação automática de webhooks
+    startWebhookRenewalCron();
 });

@@ -18,6 +18,9 @@ router.post('/process-url', authenticate, (req, res) => clipController.processUr
 // POST   /api/clips/:clipId/autopost  → Auto-postar nas redes sociais
 router.post('/:clipId/autopost', authenticate, (req, res) => clipController.autoPost(req, res));
 
+// PATCH  /api/clips/:clipId
+router.patch('/:clipId', authenticate, (req, res) => clipController.updateClip(req, res));
+
 // DELETE /api/clips/:clipId
 router.delete('/:clipId', authenticate, (req, res) => clipController.deleteClip(req, res));
 

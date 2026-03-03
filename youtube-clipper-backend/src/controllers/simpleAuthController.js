@@ -82,15 +82,25 @@ const emailLogin = async (req, res) => {
 // PUT /api/auth/profile → Atualizar perfil
 const updateProfile = async (req, res) => {
     try {
-        const { name, email } = req.body;
+        const { name } = req.body;
         const userId = req.user.id;
+
+        // Se for login via Google, não permitimos mudar email (que é readonly no front)
+        // Mas o Auth do Supabase já cuida disso se não passarmos email.
 
         const updates = {};
         if (name) updates.name = name;
-        if (email) updates.email = email;
 
-        const user = await db.updateUser(userId, updates);
-        res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar } });
+        const { data: user, error } = await supabase
+            .from('users')
+            .update(updates)
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, plan: user.plan } });
     } catch (err) {
         logger.error(`UpdateProfile error: ${err.message}`);
         res.status(500).json({ error: err.message });
@@ -130,7 +140,23 @@ const updatePassword = async (req, res) => {
 const deleteAccount = async (req, res) => {
     try {
         const userId = req.user.id;
-        await db.deleteUser(userId);
+
+        // 1. Deletar dados relacionados (clips, videos, etc.)
+        // Nota: se o banco tiver ON DELETE CASCADE, isso é automático.
+        // Mas por segurança, vamos garantir a limpeza de clips e vídeos.
+        await supabase.from('clips').delete().eq('user_id', userId);
+        await supabase.from('videos').delete().eq('user_id', userId);
+        await supabase.from('channels').delete().eq('user_id', userId);
+        await supabase.from('platform_connections').delete().eq('user_id', userId);
+        await supabase.from('user_settings').delete().eq('user_id', userId);
+
+        // 2. Deletar usuário (tabela users e Supabase Auth)
+        const { error } = await supabase.auth.admin.deleteUser(userId);
+        if (error) {
+            // Se falhar o admin delete (ex: sem key de service_role), deletamos da tabela users ao menos
+            await supabase.from('users').delete().eq('id', userId);
+        }
+
         res.json({ success: true, message: 'Conta excluída com sucesso.' });
     } catch (err) {
         logger.error(`DeleteAccount error: ${err.message}`);

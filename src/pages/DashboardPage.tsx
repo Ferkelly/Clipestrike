@@ -38,6 +38,8 @@ interface Channel {
     status?: string;
 }
 
+import { EditClipModal } from "../components/EditClipModal";
+
 interface Clip {
     id: string;
     title: string;
@@ -114,6 +116,7 @@ export default function DashboardPage() {
     const [progress, setProgress] = useState(0);
     const [step, setStep] = useState("");
     const [clips, setClips] = useState<Clip[]>([]);
+    const [editingClip, setEditingClip] = useState<Clip | null>(null);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [runs, setRuns] = useState<VideoJob[]>([]);
     const [platformConfig, setPlatformConfig] = useState<{
@@ -630,7 +633,7 @@ export default function DashboardPage() {
                                             <div className="flex items-center gap-3 ml-auto px-4">
                                                 {clip.status === 'done' && (
                                                     <button
-                                                        onClick={() => handleYouTubeManualPost(clip.id)}
+                                                        onClick={() => setEditingClip(clip)}
                                                         title="Publicar no YouTube"
                                                         className={`p-3 rounded-xl transition-all ${clip.post_status === 'posted' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20'}`}
                                                     >

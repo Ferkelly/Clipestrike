@@ -156,9 +156,45 @@ async function resubscribeAllChannels() {
     }
 }
 
+// Renova inscrição de todos os canais ativos (YouTube expira em ~10 dias)
+async function renewAllSubscriptions() {
+    const { data: channels } = await supabase
+        .from("channels")
+        .select("youtube_channel_id, title")
+        .eq("is_active", true);
+
+    if (!channels?.length) {
+        console.log("[Webhook] Nenhum canal para renovar");
+        return;
+    }
+
+    console.log(`[Webhook] 🔄 Renovando ${channels.length} inscrição(ões)...`);
+
+    for (const ch of channels) {
+        try {
+            notifier.subscribe(ch.youtube_channel_id);
+            await new Promise(r => setTimeout(r, 300));
+        } catch (err) {
+            console.error(`[Webhook] ❌ Erro ao renovar ${ch.title}:`, err.message);
+        }
+    }
+
+    // Atualiza a data da última renovação
+    await supabase
+        .from("system_config")
+        .upsert({
+            key: "webhook_last_renewal",
+            value: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }, { onConflict: "key" });
+
+    console.log(`[Webhook] ✅ Renovação concluída`);
+}
+
 module.exports = {
     notifier,
     subscribeToChannel,
     unsubscribeFromChannel,
-    resubscribeAllChannels
+    resubscribeAllChannels,
+    renewAllSubscriptions
 };

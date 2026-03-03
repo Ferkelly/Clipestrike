@@ -102,4 +102,33 @@ router.put("/channel/:channelId/resume", authenticate, async (req, res) => {
     }
 });
 
+// Status da renovação de webhooks
+router.get('/webhook-status', async (req, res) => {
+    try {
+        const { data: config } = await supabase
+            .from('system_config')
+            .select('value')
+            .eq('key', 'webhook_last_renewal')
+            .maybeSingle();
+
+        const { count: activeChannels } = await supabase
+            .from('channels')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_active', true);
+
+        const lastRenewal = config?.value || 'nunca';
+        const nextRenewal = config?.value
+            ? new Date(new Date(config.value).getTime() + 8 * 24 * 60 * 60 * 1000).toISOString()
+            : 'próximo restart';
+
+        res.json({
+            lastRenewal,
+            nextRenewal,
+            activeChannels: activeChannels || 0
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
