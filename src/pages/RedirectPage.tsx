@@ -1,14 +1,15 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Zap, ShieldCheck } from "lucide-react";
 
 export default function RedirectPage() {
+    const navigate = useNavigate();
     useEffect(() => {
-        // Mock redirect delay
         const timer = setTimeout(() => {
-            // In a real app, window.location.href = googleAuthUrl;
-        }, 3000);
+            navigate("/auth/google/accounts");
+        }, 2000);
         return () => clearTimeout(timer);
-    }, []);
+    }, [navigate]);
 
     return (
         <div className="min-h-screen bg-[#0B0F19] text-white font-sans flex flex-col items-center justify-center relative overflow-hidden">

@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import DashboardPage from "./pages/DashboardPage";
 import RedirectPage from "./pages/RedirectPage";
+import GoogleAccountSelectorPage from "./pages/GoogleAccountSelectorPage";
+import GooglePermissionsPage from "./pages/GooglePermissionsPage";
 import { LoginPage, SignupPage } from "./pages/AuthPages";
 import { ConnectChannelPage } from "./pages/SetupPages";
 import SetupPlatformsPage from "./pages/SetupPlatformsPage";
@@ -38,6 +40,8 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/auth/redirect" element={<RedirectPage />} />
+        <Route path="/auth/google/accounts" element={<GoogleAccountSelectorPage />} />
+        <Route path="/auth/google/permissions" element={<GooglePermissionsPage />} />
 
         {/* Onboarding */}
         <Route path="/setup/channel" element={
