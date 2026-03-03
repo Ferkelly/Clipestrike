@@ -232,6 +232,8 @@ export default function DashboardPage() {
         setProcessing(true);
         try {
             const token = localStorage.getItem("token");
+            console.log("Iniciando requisição para:", `${API_URL}/videos/import`);
+
             const res = await fetch(`${API_URL}/videos/import`, {
                 method: "POST",
                 headers: {
@@ -241,16 +243,33 @@ export default function DashboardPage() {
                 body: JSON.stringify({ url, type })
             });
 
-            const data = await res.json();
+            // Tenta pegar o JSON, mas trata se não for JSON
+            let data;
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                data = await res.json();
+            } else {
+                const text = await res.text();
+                console.error("Resposta não é JSON:", text);
+                throw new Error(`Erro do servidor (Status ${res.status}): A resposta não é um JSON válido.`);
+            }
+
             if (res.ok) {
                 setUrl("");
                 setActiveTab("runs");
             } else {
                 setUrlError(data.error || "Erro ao processar conteúdo");
             }
-        } catch (err) {
-            console.error("Erro no processamento (Network/CORS):", err);
-            setUrlError("Falha de conexão com o servidor. Verifique se o backend está rodando.");
+        } catch (err: any) {
+            console.error("Erro detalhado no processamento:", err);
+
+            if (err.message.includes("JSON")) {
+                setUrlError(err.message);
+            } else if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+                setUrlError(`Falha de conexão com ${API_URL}. Verifique CORS ou se a URL está correta.`);
+            } else {
+                setUrlError(`Erro: ${err.message || "Falha de conexão com o servidor"}`);
+            }
         } finally {
             setProcessing(false);
         }
