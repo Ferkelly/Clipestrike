@@ -1,274 +1,127 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Zap, Youtube, Music, Instagram, Facebook } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+function SetupLayout({ step, title, subtitle, children }: {
+    step: 1 | 2; title: string; subtitle: string; children: React.ReactNode;
+}) {
+    const navigate = useNavigate();
+    return (
+        <div className="min-h-screen bg-[#0B0F19] text-white font-sans flex flex-col relative overflow-hidden">
+            {/* Background Effects */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[120px] opacity-30 mix-blend-screen" />
+                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] opacity-20 mix-blend-screen" />
+            </div>
 
-const PLATFORMS = [
-    { id: "tiktok", icon: "🎵", name: "TikTok", color: "from-pink-600 to-red-500" },
-    { id: "instagram", icon: "📸", name: "Instagram Reels", color: "from-purple-600 to-pink-500" },
-    { id: "youtube", icon: "📺", name: "YouTube Shorts", color: "from-red-600 to-red-400" },
-    { id: "facebook", icon: "👤", name: "Facebook", color: "from-blue-700 to-blue-500" },
-    { id: "twitter", icon: "✖", name: "X / Twitter", color: "from-zinc-700 to-zinc-500" },
-    { id: "linkedin", icon: "💼", name: "LinkedIn", color: "from-blue-600 to-blue-400" },
-];
+            <nav className="relative z-50 flex items-center justify-between px-8 h-20 border-b border-white/5 bg-black/20 backdrop-blur-md">
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+                        <Zap className="h-5 w-5 text-white" fill="currentColor" />
+                    </div>
+                    <span className="font-display text-xl font-bold tracking-tight bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 bg-clip-text text-transparent pt-1">
+                        EasySlice.AI
+                    </span>
+                </div>
+
+                {/* Step indicator */}
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-purple-400">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]">1</div>
+                        <span className="hidden sm:inline">Channels</span>
+                    </div>
+                    <div className="w-10 h-px bg-purple-500" />
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-purple-400">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]">2</div>
+                        <span className="hidden sm:inline">Platforms</span>
+                    </div>
+                </div>
+
+                <div className="w-24 hidden sm:block" />
+            </nav>
+
+            <div className="flex-1 relative z-10 flex flex-col items-center px-6 pt-16 pb-20">
+                <div className="w-full max-w-4xl">
+                    <div className="text-center mb-12 fade-in">
+                        <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{title}</h1>
+                        <p className="text-white/50 max-w-md mx-auto leading-relaxed text-sm">{subtitle}</p>
+                    </div>
+                    {children}
+                </div>
+            </div>
+
+            <style>{`
+                .fade-in { animation: fadeIn 0.6s ease-out forwards; }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+                .border-gradient-s { position: relative; }
+                .border-gradient-s::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+            `}</style>
+        </div>
+    );
+}
 
 export default function SetupPlatformsPage() {
     const navigate = useNavigate();
-    const [step, setStep] = useState<"connect" | "username" | "platforms">("connect");
-    const [username, setUsername] = useState("");
-    const [selected, setSelected] = useState<Set<string>>(new Set(["tiktok", "instagram", "youtube"]));
-    const [autoPost, setAutoPost] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState("");
+    const [connected, setConnected] = useState<string[]>([]);
 
-    function togglePlatform(id: string) {
-        setSelected(prev => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
-    }
+    const platforms = [
+        { id: "youtube", name: "YouTube", desc: "Post clips as YouTube Shorts", icon: <Youtube className="h-6 w-6 text-red-500" />, color: "red" },
+        { id: "tiktok", name: "TikTok", desc: "Short viral video platform", icon: <Music className="h-6 w-6 text-cyan-400" />, color: "cyan" },
+        { id: "instagram", name: "Instagram", desc: "Post as Reels automatically", icon: <Instagram className="h-6 w-6 text-pink-500" />, color: "pink" },
+        { id: "facebook", name: "Facebook", desc: "Share to Reels & Feed", icon: <Facebook className="h-6 w-6 text-blue-500" />, color: "blue" },
+    ];
 
-    async function handleSave() {
-        if (!username.trim() || selected.size === 0) return;
-        setSaving(true);
-        setError("");
-        const token = localStorage.getItem("clipstrike_token");
-        try {
-            const res = await fetch(`${API_URL}/autopost/platforms/config`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    uploadPostUser: username.trim(),
-                    enabledPlatforms: [...selected],
-                    autoPost,
-                }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Erro ao salvar");
-            navigate("/dashboard");
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setSaving(false);
-        }
-    }
+    const toggleConnect = (id: string) => {
+        setConnected(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+    };
 
     return (
-        <div className="min-h-screen bg-[#080808] text-white font-sans flex flex-col">
-            {/* BG */}
-            <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full bg-orange-600/7 blur-[100px]" />
-            </div>
+        <SetupLayout
+            step={2}
+            title="Connect Your Platforms"
+            subtitle="Connect your social media accounts where you want your clips to be automatically posted."
+        >
+            <div className="space-y-12 fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {platforms.map(p => (
+                        <div key={p.id} className="bg-white/5 border border-white/10 backdrop-blur-2xl rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-gradient-s flex items-center justify-between group hover:border-white/20 transition-all">
+                            <div className="flex items-center gap-5">
+                                <div className={`w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                    {p.icon}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg">{p.name}</h3>
+                                    <p className="text-white/40 text-xs mt-1">{p.desc}</p>
+                                </div>
+                            </div>
 
-            {/* Nav */}
-            <nav className="flex items-center justify-between px-8 h-16 border-b border-white/5 relative z-10">
-                <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate("/")}>
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center text-sm">⚡</div>
-                    <span className="font-black text-xl tracking-tight">Clip<span className="text-orange-500">Strike</span></span>
-                </div>
-                {/* Steps */}
-                <div className="flex items-center gap-2 text-xs">
-                    {["connect", "username", "platforms"].map((s, i) => (
-                        <div key={s} className="flex items-center gap-2">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs transition-all ${step === s ? "bg-orange-500 text-white" :
-                                    ["connect", "username", "platforms"].indexOf(step) > i ? "bg-emerald-500 text-white" :
-                                        "bg-zinc-800 text-zinc-600"
-                                }`}>{i + 1}</div>
-                            {i < 2 && <div className={`w-8 h-px ${["connect", "username", "platforms"].indexOf(step) > i ? "bg-emerald-500" : "bg-zinc-800"}`} />}
+                            <button
+                                onClick={() => toggleConnect(p.id)}
+                                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${connected.includes(p.id)
+                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                        : "bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:scale-[1.05]"
+                                    }`}
+                            >
+                                {connected.includes(p.id) ? "Connected" : "Connect"}
+                            </button>
                         </div>
                     ))}
                 </div>
-                <div className="w-24" />
-            </nav>
 
-            <div className="flex-1 flex items-start justify-center px-6 pt-10 pb-16 relative z-10">
-                <div className="w-full max-w-[580px]">
-
-                    {/* ── STEP 1: Instruções para conectar no Upload-Post ── */}
-                    {step === "connect" && (
-                        <div>
-                            <div className="text-center mb-8">
-                                <div className="text-5xl mb-4">🔗</div>
-                                <h1 className="text-3xl font-black tracking-tight mb-2">Conecte Suas Plataformas</h1>
-                                <p className="text-zinc-500 text-sm">O ClipStrike usa o Upload-Post.com para publicar nas redes sociais. É grátis e leva 2 minutos.</p>
-                            </div>
-
-                            <div className="bg-[#111] border border-white/8 rounded-2xl p-6 mb-4">
-                                <h2 className="font-bold text-white mb-5 flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-black flex items-center justify-center">1</span>
-                                    Crie sua conta no Upload-Post.com
-                                </h2>
-                                <p className="text-zinc-400 text-sm mb-5 leading-relaxed">
-                                    O Upload-Post.com é o serviço que conecta o ClipStrike ao TikTok, Instagram, YouTube e mais — usando OAuth oficial, sem riscos de banimento.
-                                </p>
-                                <a
-                                    href="https://app.upload-post.com/welcome"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center justify-center gap-3 w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 font-bold text-sm hover:opacity-90 transition-opacity"
-                                >
-                                    Acessar Upload-Post.com →
-                                </a>
-                            </div>
-
-                            <div className="bg-[#111] border border-white/8 rounded-2xl p-6 mb-4">
-                                <h2 className="font-bold text-white mb-4 flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-black flex items-center justify-center">2</span>
-                                    Conecte suas redes lá
-                                </h2>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {PLATFORMS.map(p => (
-                                        <div key={p.id} className="flex items-center gap-2 bg-white/3 rounded-lg px-3 py-2 text-xs text-zinc-400">
-                                            <span>{p.icon}</span> {p.name}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="bg-[#111] border border-white/8 rounded-2xl p-6 mb-6">
-                                <h2 className="font-bold text-white mb-2 flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-black flex items-center justify-center">3</span>
-                                    Volte aqui e clique em "Já conectei"
-                                </h2>
-                                <p className="text-zinc-500 text-xs">Você vai informar seu username do Upload-Post e selecionar as plataformas que quer usar.</p>
-                            </div>
-
-                            <button
-                                onClick={() => setStep("username")}
-                                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 font-bold text-sm hover:opacity-90 transition-opacity"
-                            >
-                                ✅ Já conectei — Continuar
-                            </button>
-
-                            <button
-                                onClick={() => navigate("/dashboard")}
-                                className="w-full mt-3 py-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-                            >
-                                Pular por agora
-                            </button>
-                        </div>
-                    )}
-
-                    {/* ── STEP 2: Informar username ── */}
-                    {step === "username" && (
-                        <div>
-                            <div className="text-center mb-8">
-                                <div className="text-5xl mb-4">👤</div>
-                                <h1 className="text-3xl font-black tracking-tight mb-2">Seu Username</h1>
-                                <p className="text-zinc-500 text-sm">Qual é o seu username no Upload-Post.com?</p>
-                            </div>
-
-                            <div className="bg-[#111] border border-white/8 rounded-2xl p-6 mb-4">
-                                <label className="block text-xs font-medium text-zinc-400 mb-2">
-                                    Username do Upload-Post.com
-                                </label>
-                                <input
-                                    type="text"
-                                    value={username}
-                                    onChange={e => setUsername(e.target.value)}
-                                    placeholder="meu-usuario"
-                                    className="w-full bg-[#0d0d0d] border border-white/8 rounded-xl px-4 py-3.5 text-white text-sm placeholder-zinc-700 outline-none focus:border-orange-500/40 transition-colors"
-                                />
-                                <p className="text-xs text-zinc-600 mt-2">
-                                    Encontre no painel do Upload-Post.com após fazer login.
-                                </p>
-                            </div>
-
-                            {/* Onde encontrar o username */}
-                            <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-4 mb-6 text-xs text-zinc-500 leading-relaxed">
-                                <p className="font-semibold text-zinc-400 mb-2">📍 Como encontrar seu username:</p>
-                                <p>1. Acesse <span className="text-orange-400">app.upload-post.com</span></p>
-                                <p>2. Clique no seu perfil (canto superior direito)</p>
-                                <p>3. O username aparece abaixo do seu nome</p>
-                            </div>
-
-                            <button
-                                onClick={() => username.trim() && setStep("platforms")}
-                                disabled={!username.trim()}
-                                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                                Continuar →
-                            </button>
-                            <button onClick={() => setStep("connect")} className="w-full mt-3 py-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
-                                ← Voltar
-                            </button>
-                        </div>
-                    )}
-
-                    {/* ── STEP 3: Selecionar plataformas ── */}
-                    {step === "platforms" && (
-                        <div>
-                            <div className="text-center mb-8">
-                                <div className="text-5xl mb-4">📲</div>
-                                <h1 className="text-3xl font-black tracking-tight mb-2">Onde Publicar?</h1>
-                                <p className="text-zinc-500 text-sm">Selecione as plataformas onde seus clips serão publicados automaticamente.</p>
-                            </div>
-
-                            <div className="bg-[#111] border border-white/8 rounded-2xl p-6 mb-4">
-                                <div className="grid grid-cols-2 gap-3 mb-5">
-                                    {PLATFORMS.map(p => {
-                                        const isSelected = selected.has(p.id);
-                                        return (
-                                            <button
-                                                key={p.id}
-                                                onClick={() => togglePlatform(p.id)}
-                                                className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${isSelected
-                                                        ? "border-orange-500/40 bg-orange-500/8"
-                                                        : "border-white/8 bg-[#0d0d0d] hover:border-white/15"
-                                                    }`}
-                                            >
-                                                <span className="text-xl">{p.icon}</span>
-                                                <div>
-                                                    <div className={`text-sm font-semibold ${isSelected ? "text-white" : "text-zinc-400"}`}>
-                                                        {p.name}
-                                                    </div>
-                                                </div>
-                                                <div className="ml-auto">
-                                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? "border-orange-500 bg-orange-500" : "border-zinc-700"
-                                                        }`}>
-                                                        {isSelected && <span className="text-white text-[10px]">✓</span>}
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Auto-post toggle */}
-                                <div className="flex items-center justify-between p-4 rounded-xl bg-white/3 border border-white/6">
-                                    <div>
-                                        <div className="text-sm font-semibold text-white">Publicar automaticamente</div>
-                                        <div className="text-xs text-zinc-500 mt-0.5">Publica assim que o clip for gerado</div>
-                                    </div>
-                                    <button
-                                        onClick={() => setAutoPost(!autoPost)}
-                                        className={`w-12 h-6 rounded-full transition-all relative ${autoPost ? "bg-orange-500" : "bg-zinc-700"}`}
-                                    >
-                                        <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${autoPost ? "left-7" : "left-1"}`} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {error && (
-                                <div className="mb-4 text-xs text-red-400 bg-red-500/8 border border-red-500/15 rounded-lg px-4 py-3">{error}</div>
-                            )}
-
-                            <button
-                                onClick={handleSave}
-                                disabled={saving || selected.size === 0}
-                                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                                {saving ? "Salvando..." : `Salvar e Ir para o Dashboard →`}
-                            </button>
-
-                            <p className="text-center text-xs text-zinc-600 mt-3">
-                                {selected.size} plataforma(s) selecionada(s)
-                            </p>
-                        </div>
-                    )}
+                <div className="max-w-md mx-auto">
+                    <button
+                        disabled={connected.length === 0}
+                        onClick={() => navigate("/dashboard")}
+                        className="w-full h-14 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:scale-[1.01] transition-all disabled:opacity-40 disabled:scale-100 disabled:shadow-none"
+                    >
+                        {connected.length > 0 ? "Complete Setup" : "Connect at least one platform to continue"}
+                    </button>
                 </div>
             </div>
-        </div>
+
+            {/* Subtle Glows */}
+            <div className="absolute top-1/2 left-0 w-64 h-64 bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute bottom-1/4 right-0 w-64 h-64 bg-pink-600/10 rounded-full blur-[100px] pointer-events-none" />
+        </SetupLayout>
     );
 }
