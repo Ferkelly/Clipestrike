@@ -40,17 +40,24 @@ class ClipController {
 
     // Iniciar processamento direto via URL do YouTube
     async processUrl(req, res) {
-        const { url } = req.body;
+        const { url, type } = req.body;
         const userId = req.user.id;
         const io = req.app.get('io');
 
         if (!url) return res.status(400).json({ error: 'URL é obrigatória.' });
 
         try {
-            // 1. Extrair ID do YouTube
-            const ytIdMatch = url.match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
-            if (!ytIdMatch) return res.status(400).json({ error: 'URL do YouTube inválida.' });
-            const youtubeVideoId = ytIdMatch[1];
+            let youtubeVideoId;
+
+            if (type === 'channel') {
+                // Buscar o vídeo mais recente do canal
+                youtubeVideoId = await youTubeService.getLatestVideoFromChannel(url);
+            } else {
+                // 1. Extrair ID do YouTube
+                const ytIdMatch = url.match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
+                if (!ytIdMatch) return res.status(400).json({ error: 'URL do YouTube inválida.' });
+                youtubeVideoId = ytIdMatch[1];
+            }
 
             // 2. Garantir que o usuário tem um canal "Manual" para associar o vídeo
             let { data: channel } = await supabase

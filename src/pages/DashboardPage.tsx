@@ -95,6 +95,7 @@ export default function DashboardPage() {
     };
 
     const [url, setUrl] = useState("");
+    const [urlError, setUrlError] = useState("");
     const [processing, setProcessing] = useState(false);
     const [clips, setClips] = useState<Clip[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
@@ -195,15 +196,36 @@ export default function DashboardPage() {
         }
     }, [clips]);
 
+    const detectUrlType = (rawUrl: string): 'video' | 'channel' | 'invalid' => {
+        const u = rawUrl.trim().toLowerCase();
+        if (!u) return 'invalid';
+
+        // URLs de VÍDEO válidas
+        if (
+            u.includes('youtube.com/watch?v=') ||
+            u.includes('youtu.be/') ||
+            u.includes('youtube.com/shorts/')
+        ) return 'video';
+
+        // URLs de CANAL válidas
+        if (
+            u.includes('youtube.com/@') ||
+            u.includes('youtube.com/channel/') ||
+            u.includes('youtube.com/c/') ||
+            u.includes('youtube.com/user/')
+        ) return 'channel';
+
+        return 'invalid';
+    };
+
     const handleProcess = async () => {
+        setUrlError("");
         if (!url) return;
 
-        // Validação: deve ser um VÍDEO do YouTube, não um canal
-        const isVideo = url.includes("watch?v=") || url.includes("youtu.be/");
-        const ytRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+        const type = detectUrlType(url);
 
-        if (!ytRegex.test(url) || !isVideo) {
-            alert("Por favor, insira uma URL de VÍDEO válida (ex: youtube.com/watch?v=...). Para canais, use a aba Canais.");
+        if (type === 'invalid') {
+            setUrlError("Cole uma URL do YouTube válida (vídeo ou canal)");
             return;
         }
 
@@ -216,7 +238,7 @@ export default function DashboardPage() {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ url })
+                body: JSON.stringify({ url, type })
             });
 
             const data = await res.json();
@@ -224,11 +246,11 @@ export default function DashboardPage() {
                 setUrl("");
                 setActiveTab("runs");
             } else {
-                alert(data.error || "Erro ao processar vídeo");
+                setUrlError(data.error || "Erro ao processar conteúdo");
             }
         } catch (err) {
             console.error("Erro no processamento (Network/CORS):", err);
-            alert("Falha de conexão com o servidor. Verifique se o backend está rodando e se a VITE_API_URL está correta.");
+            setUrlError("Falha de conexão com o servidor. Verifique se o backend está rodando.");
         } finally {
             setProcessing(false);
         }
@@ -359,21 +381,38 @@ export default function DashboardPage() {
                                     <h3 className="text-3xl font-display mb-4">CRIE CLIPS AGORA</h3>
                                     <p className="text-muted-foreground mb-8 text-sm">Cole a URL de um vídeo do YouTube para que nossa IA determine os melhores momentos.</p>
 
-                                    <div className="flex gap-3">
-                                        <input
-                                            type="text"
-                                            value={url}
-                                            onChange={e => setUrl(e.target.value)}
-                                            placeholder="https://youtube.com/watch?v=..."
-                                            className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 transition-all text-white"
-                                        />
-                                        <Button
-                                            onClick={handleProcess}
-                                            disabled={processing || !url}
-                                            className="h-14 px-10 rounded-2xl bg-primary text-white font-bold glow-effect hover:scale-105 transition-transform border-0 shadow-lg shadow-primary/25"
-                                        >
-                                            {processing ? "Importando..." : "Processar Vídeo"}
-                                        </Button>
+                                    <div className="space-y-3">
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 relative group">
+                                                <input
+                                                    type="text"
+                                                    value={url}
+                                                    onChange={e => {
+                                                        setUrl(e.target.value);
+                                                        if (urlError) setUrlError("");
+                                                    }}
+                                                    placeholder="Cole URL do vídeo ou canal do YouTube..."
+                                                    className={`w-full bg-white/10 border ${urlError ? 'border-red-500/50' : 'border-white/10'} hover:border-white/20 focus:border-primary/50 rounded-2xl px-6 py-4 text-sm focus:outline-none transition-all text-white`}
+                                                />
+                                            </div>
+                                            <Button
+                                                onClick={handleProcess}
+                                                disabled={processing || !url}
+                                                className="h-14 px-10 rounded-2xl bg-primary text-white font-bold glow-effect hover:scale-105 transition-transform border-0 shadow-lg shadow-primary/25"
+                                            >
+                                                {processing ? "Importando..." : "Processar Vídeo"}
+                                            </Button>
+                                        </div>
+                                        <div className="flex justify-between items-center px-2">
+                                            <p className="text-[10px] uppercase font-mono tracking-widest text-zinc-500">
+                                                Ex: youtube.com/watch?v=... ou youtube.com/@Canal
+                                            </p>
+                                            {urlError && (
+                                                <p className="text-[10px] font-bold text-red-500 uppercase tracking-tighter animate-pulse">
+                                                    {urlError}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

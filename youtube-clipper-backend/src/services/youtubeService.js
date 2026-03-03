@@ -140,6 +140,48 @@ class YouTubeService {
         return response.data.items;
     }
 
+    // Obter o vídeo mais recente de um canal (suporta URL ou ID)
+    async getLatestVideoFromChannel(channelUrlOrId) {
+        const channelId = await this._extractChannelId(channelUrlOrId);
+        if (!channelId) throw new Error('Não foi possível identificar o ID do canal.');
+
+        const videos = await this.getLatestVideos(channelId, new Date(0));
+        if (!videos || videos.length === 0) {
+            throw new Error('Nenhum vídeo encontrado para este canal.');
+        }
+
+        // Retorna o mais recente (getLatestVideos já ordena por data)
+        return videos[0].id.videoId;
+    }
+
+    // Helper para extrair channelId de diversos formatos
+    async _extractChannelId(urlOrId) {
+        if (!urlOrId) return null;
+        if (urlOrId.startsWith('UC') && urlOrId.length === 24) return urlOrId;
+
+        // Formatos: 
+        // @handle, /channel/UC..., /c/..., /user/...
+        let handle = null;
+        if (urlOrId.includes('@')) {
+            handle = urlOrId.split('@').pop().split('/')[0].split('?')[0];
+        } else if (urlOrId.includes('/channel/')) {
+            return urlOrId.split('/channel/').pop().split('/')[0].split('?')[0];
+        } else if (urlOrId.includes('/c/')) {
+            handle = urlOrId.split('/c/').pop().split('/')[0].split('?')[0];
+        } else if (urlOrId.includes('/user/')) {
+            handle = urlOrId.split('/user/').pop().split('/')[0].split('?')[0];
+        } else if (!urlOrId.includes('/')) {
+            handle = urlOrId; // Assume handle se não tiver barra
+        }
+
+        if (handle) {
+            const channel = await this.getChannelInfo(handle);
+            return channel?.id || null;
+        }
+
+        return null;
+    }
+
     // Download do vídeo (usando yt-dlp-exec)
     async downloadVideo(videoUrl, outputPath) {
         const ytDlpExec = require('yt-dlp-exec');
