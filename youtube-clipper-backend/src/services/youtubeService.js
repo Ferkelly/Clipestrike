@@ -1,6 +1,8 @@
 const { youtube, oauth2Client } = require('../config/youtube');
 const { db } = require('../config/database');
 const axios = require('axios');
+const path = require('path');
+const fs = require('fs');
 
 // Cache em memória: channelId → uploadsPlaylistId (não muda nunca)
 const uploadsPlaylistCache = new Map();
@@ -197,37 +199,123 @@ class YouTubeService {
         }
     }
 
-    // Upload para YouTube Shorts (opcional - se quiser reupload)
-    async uploadShort(videoPath, title, description, tags, accessToken) {
-        oauth2Client.setCredentials({ access_token: accessToken });
+    // Faz upload do clip como YouTube Short (Direto)
+    async uploadYouTubeShort(clipId, userId) {
+        console.log(`[YouTubeService] Iniciando upload direto do clip ${clipId} para o usuário ${userId}`);
+        const { supabase } = require('../config/database');
 
-        const fileSize = require('fs').statSync(videoPath).size;
+        // 1. Busca tokens do usuário
+        const { data: conn, error: connError } = await supabase
+            .from("platform_connections")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("platform", "youtube")
+            .single();
 
-        const res = await youtube.videos.insert({
-            part: 'snippet,status',
-            requestBody: {
-                snippet: {
-                    title,
-                    description,
-                    tags,
-                    categoryId: '22' // People & Blogs
-                },
-                status: {
-                    privacyStatus: 'public',
-                    selfDeclaredMadeForKids: false
-                }
-            },
-            media: {
-                body: require('fs').createReadStream(videoPath)
-            }
-        }, {
-            onUploadProgress: (evt) => {
-                const progress = (evt.bytesRead / fileSize) * 100;
-                console.log(`${Math.round(progress)}% complete`);
+        if (connError || !conn) {
+            console.error(`[YouTubeService] Erro ao buscar conexão: ${connError?.message || 'Não conectado'}`);
+            throw new Error("YouTube não conectado para este usuário");
+        }
+
+        // 2. Busca o clip
+        const { data: clip, error: clipError } = await supabase
+            .from("clips")
+            .select("*")
+            .eq("id", clipId)
+            .single();
+
+        if (clipError || !clip) {
+            throw new Error("Clip não encontrado");
+        }
+
+        // 3. Configura OAuth com tokens salvos
+        oauth2Client.setCredentials({
+            access_token: conn.access_token,
+            refresh_token: conn.refresh_token,
+            expiry_date: conn.expires_at ? new Date(conn.expires_at).getTime() : undefined,
+        });
+
+        // Ouvinte para salvar novos tokens se houver refresh automático
+        oauth2Client.on("tokens", async (tokens) => {
+            if (tokens.access_token) {
+                console.log(`[YouTubeService] Token renovado para ${userId}`);
+                await supabase.from("platform_connections").update({
+                    access_token: tokens.access_token,
+                    expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+                }).eq("user_id", userId).eq("platform", "youtube");
             }
         });
 
-        return res.data;
+        // 4. Download temporário se for URL remota (Supabase Storage)
+        let filePath = clip.file_url;
+        let tempFile = false;
+
+        if (clip.file_url.startsWith("http")) {
+            const axios = require('axios');
+            const uploadsDir = path.join(__dirname, '../../uploads');
+            if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+            const tempPath = path.join(uploadsDir, `temp_upload_${clipId}.mp4`);
+
+            console.log(`[YouTubeService] Baixando clip do storage: ${clip.file_url}`);
+            const response = await axios({
+                method: 'get',
+                url: clip.file_url,
+                responseType: 'arraybuffer'
+            });
+            fs.writeFileSync(tempPath, Buffer.from(response.data));
+            filePath = tempPath;
+            tempFile = true;
+        }
+
+        try {
+            console.log(`[YouTubeService] Inserindo vídeo no YouTube...`);
+            // Upload para o YouTube
+            const uploadRes = await youtube.videos.insert({
+                part: ["snippet", "status"],
+                requestBody: {
+                    snippet: {
+                        title: clip.hook || clip.title || "Clip viral ⚡ #shorts",
+                        description: `${clip.hook || ""}\n\n#shorts #viral #clips #clipstrike`,
+                        tags: ["shorts", "viral", "clips"],
+                        categoryId: "22",
+                    },
+                    status: {
+                        privacyStatus: "public",
+                        selfDeclaredMadeForKids: false,
+                    },
+                },
+                media: {
+                    body: fs.createReadStream(filePath),
+                },
+            });
+
+            const videoId = uploadRes.data.id;
+            const videoUrl = `https://youtube.com/shorts/${videoId}`;
+
+            // 5. Atualiza clip com resultado
+            await supabase.from("clips").update({
+                post_status: "posted",
+                posted_platforms: ["youtube"],
+                posted_at: new Date().toISOString(),
+                post_results: { youtube: { videoId, url: videoUrl } },
+            }).eq("id", clipId);
+
+            console.log(`[YouTubeService] ✅ Publicado com sucesso: ${videoUrl}`);
+            return videoUrl;
+
+        } catch (err) {
+            console.error(`[YouTubeService] Erro no upload:`, err.message);
+            await supabase.from("clips").update({
+                post_status: "failed",
+                post_error: err.message
+            }).eq("id", clipId);
+            throw err;
+        } finally {
+            if (tempFile && fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
     }
 }
 

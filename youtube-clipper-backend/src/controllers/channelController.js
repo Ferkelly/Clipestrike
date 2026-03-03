@@ -2,6 +2,7 @@ const { db } = require('../config/database');
 const { youtube } = require('../config/youtube');
 const logger = require('../utils/logger');
 const axios = require('axios');
+const { subscribeToChannel, unsubscribeFromChannel } = require('../services/webhookService');
 
 // Helper para descobrir o ID do canal raspando o HTML
 const getChannelMetadataFromHtml = async (identifier) => {
@@ -131,6 +132,10 @@ const addChannel = async (req, res) => {
         });
 
         logger.info(`Canal adicionado: ${channel.title} (user: ${req.user.id})`);
+
+        // Inscrever no Webhook do YouTube para atualizações em tempo real
+        subscribeToChannel(finalId).catch(err => console.error("[Webhook] Erro ao inscrever novo canal:", err.message));
+
         res.status(201).json({ channel });
     } catch (err) {
         console.error(`[AddChannel] Fatal error:`, err);
@@ -167,6 +172,14 @@ const toggleMonitoring = async (req, res) => {
             .select()
             .single();
         if (error) throw error;
+
+        // Atualizar assinatura do Webhook baseado no status de monitoramento
+        if (isActive) {
+            subscribeToChannel(data.youtube_channel_id).catch(err => console.error("[Webhook] Erro ao inscrever canal no toggle:", err.message));
+        } else {
+            unsubscribeFromChannel(data.youtube_channel_id).catch(err => console.error("[Webhook] Erro ao desinscrever canal no toggle:", err.message));
+        }
+
         res.json({ channel: data, message: `Monitoramento ${isActive ? 'ativado' : 'desativado'}.` });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -176,12 +189,29 @@ const toggleMonitoring = async (req, res) => {
 // DELETE /api/channels/:id
 const deleteChannel = async (req, res) => {
     try {
+        const { id } = req.params;
+
+        // Buscar canal primeiro para pegar o youtube_channel_id antes de deletar
+        const { data: channel } = await require('../config/database').supabase
+            .from('channels')
+            .select('youtube_channel_id')
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .single();
+
         const { error } = await require('../config/database').supabase
             .from('channels')
             .delete()
-            .eq('id', req.params.id)
+            .eq('id', id)
             .eq('user_id', req.user.id);
+
         if (error) throw error;
+
+        // Desinscrever do Webhook se o canal foi encontrado
+        if (channel?.youtube_channel_id) {
+            unsubscribeFromChannel(channel.youtube_channel_id).catch(err => console.error("[Webhook] Erro ao desinscrever canal na remoção:", err.message));
+        }
+
         res.json({ message: 'Canal removido com sucesso.' });
     } catch (err) {
         res.status(500).json({ error: err.message });

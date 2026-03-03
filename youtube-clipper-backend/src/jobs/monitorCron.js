@@ -7,7 +7,7 @@
 const channelMonitorService = require("../services/channelMonitorService");
 
 // Intervalo em minutos (configurável via .env)
-const INTERVAL_MINUTES = parseInt(process.env.MONITOR_INTERVAL_MINUTES || "15", 10);
+const INTERVAL_MINUTES = parseInt(process.env.MONITOR_INTERVAL_MINUTES || "360", 10);
 const INTERVAL_MS = INTERVAL_MINUTES * 60 * 1000;
 
 let cronHandle = null;

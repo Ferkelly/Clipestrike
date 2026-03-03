@@ -48,6 +48,8 @@ interface Clip {
     created_at: string;
     channel_name: string;
     thumbnail?: string;
+    post_status?: string;
+    post_results?: any;
 }
 
 interface VideoJob {
@@ -221,7 +223,7 @@ export default function DashboardPage() {
             setActiveTab("platforms");
             return;
         }
-        if (!confirm("Deseja publicar este clip agora nas plataformas configuradas?")) return;
+        if (!confirm("Deseja publicar este clip agora nas plataformas configuradas via Upload-Post?")) return;
 
         try {
             const token = localStorage.getItem("clipstrike_token");
@@ -234,6 +236,30 @@ export default function DashboardPage() {
             fetchClips(); // Refresh status
         } catch (err: any) {
             alert("Erro ao publicar: " + err.message);
+        }
+    };
+
+    const handleYouTubeManualPost = async (clipId: string) => {
+        const directConn = directConnections['youtube'];
+        if (!directConn?.connected) {
+            alert("Conecte seu YouTube primeiro na aba Plataformas.");
+            setActiveTab("platforms");
+            return;
+        }
+
+        if (!confirm(`Deseja publicar este clip no canal "${directConn.username}" agora?`)) return;
+
+        try {
+            const token = localStorage.getItem("clipstrike_token");
+            const res = await fetch(`${API_URL}/platforms/youtube/upload/${clipId}`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await res.json();
+            alert(data.message || "Upload para o YouTube iniciado!");
+            fetchClips(); // Refresh status
+        } catch (err: any) {
+            alert("Erro ao publicar no YouTube: " + err.message);
         }
     };
 
@@ -496,6 +522,11 @@ export default function DashboardPage() {
                                                         }`}>
                                                         {clip.status === 'done' ? 'Concluído' : clip.status === 'processing' ? 'Processando' : clip.status === 'pending' ? 'Pendente' : 'Erro'}
                                                     </span>
+                                                    {clip.post_status === 'posted' && (
+                                                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                            <Share2 className="w-3 h-3" /> Publicado
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <h3 className="text-lg font-bold truncate group-hover:text-primary transition-colors">{clip.title}</h3>
                                                 <div className="flex items-center gap-4 mt-3 text-white/40 text-xs font-medium">
@@ -505,10 +536,19 @@ export default function DashboardPage() {
                                             </div>
 
                                             <div className="flex items-center gap-3 ml-auto px-4">
+                                                {clip.status === 'done' && (
+                                                    <button
+                                                        onClick={() => handleYouTubeManualPost(clip.id)}
+                                                        title="Publicar no YouTube"
+                                                        className={`p-3 rounded-xl transition-all ${clip.post_status === 'posted' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20'}`}
+                                                    >
+                                                        <Youtube className="w-5 h-5" />
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => handleManualPost(clip.id)}
-                                                    title="Publicar nas Redes"
-                                                    className="p-3 bg-primary/10 border border-primary/20 rounded-xl hover:bg-primary/20 text-primary transition-all"
+                                                    title="Publicar em Outras Redes"
+                                                    className="p-3 bg-primary/10 border border-primary/20 rounded-xl hover:bg-primary/20 text-primary transition-all font-bold"
                                                 >
                                                     <Share2 className="w-5 h-5" />
                                                 </button>

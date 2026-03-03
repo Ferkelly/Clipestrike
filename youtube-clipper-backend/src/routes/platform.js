@@ -138,4 +138,26 @@ router.delete("/:platform", authenticate, async (req, res) => {
     }
 });
 
+// ── POST /api/platforms/youtube/upload/:clipId ─────────────
+// Upload manual de um clip específico
+router.post("/youtube/upload/:clipId", authenticate, async (req, res) => {
+    const { clipId } = req.params;
+    const userId = req.user.id;
+
+    try {
+        const youtubeService = require('../services/youtubeService');
+
+        // Retorna imediato para não travar o front, mas processa em background
+        res.json({ success: true, message: "Upload para o YouTube iniciado em background." });
+
+        youtubeService.uploadYouTubeShort(clipId, userId).catch(err => {
+            console.error(`[Manual Upload Error] Clip ${clipId}:`, err.message);
+        });
+
+    } catch (err) {
+        console.error("[YouTube Manual Upload] Erro:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

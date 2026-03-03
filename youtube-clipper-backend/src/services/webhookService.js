@@ -1,0 +1,150 @@
+const YoutubeNotifier = require("youtube-notification");
+const { supabase } = require("../config/database");
+const axios = require("axios");
+
+const CALLBACK_URL = `${process.env.API_BASE_URL}/api/webhook/youtube`;
+const SECRET = process.env.WEBHOOK_SECRET || "clipstrike-secret";
+
+// Inicializa o notifier
+const notifier = new YoutubeNotifier({
+    hubCallback: CALLBACK_URL,
+    secret: SECRET,
+    middleware: true, // usar como middleware Express
+    path: "/",
+});
+
+// Quando YouTube avisar de novo vídeo
+notifier.on("notified", async (data) => {
+    const { channel, video } = data;
+
+    console.log(`[Webhook] 🔔 Novo vídeo detectado!`);
+    console.log(`  Canal:  ${channel.name} (${channel.id})`);
+    console.log(`  Vídeo:  ${video.title} (${video.id})`);
+
+    try {
+        // Busca o canal no banco para saber qual usuário é dono
+        const { data: channelRecord } = await supabase
+            .from("channels")
+            .select("id, user_id, title")
+            .eq("youtube_channel_id", channel.id)
+            .eq("is_active", true)
+            .single();
+
+        if (!channelRecord) {
+            console.log(`[Webhook] Canal ${channel.id} não encontrado ou não monitorado`);
+            return;
+        }
+
+        // Verifica se já foi importado
+        const { data: existing } = await supabase
+            .from("videos")
+            .select("id")
+            .eq("youtube_video_id", video.id)
+            .eq("user_id", channelRecord.user_id)
+            .single();
+
+        if (existing) {
+            console.log(`[Webhook] Vídeo ${video.id} já importado, pulando`);
+            return;
+        }
+
+        // Cria o vídeo no banco
+        const { data: newVideo, error: insertError } = await supabase
+            .from("videos")
+            .insert({
+                user_id: channelRecord.user_id,
+                channel_id: channelRecord.id,
+                youtube_video_id: video.id,
+                title: video.title,
+                url: `https://www.youtube.com/watch?v=${video.id}`,
+                status: "pending",
+                source: "webhook",
+            })
+            .select()
+            .single();
+
+        if (insertError || !newVideo) {
+            console.error(`[Webhook] Erro ao inserir vídeo:`, insertError?.message);
+            return;
+        }
+
+        // Dispara o pipeline de processamento internamente
+        // Nota: O endpoint /api/videos/process deve existir e aceitar x-internal-key
+        try {
+            await axios.post(`${process.env.API_BASE_URL}/api/videos/process`, {
+                videoId: newVideo.id,
+                youtubeVideoId: video.id,
+                userId: channelRecord.user_id,
+            }, {
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-internal-key": process.env.INTERNAL_API_KEY || "internal",
+                }
+            });
+            console.log(`[Webhook] ✅ Pipeline iniciado para: "${video.title}"`);
+        } catch (procErr) {
+            console.error(`[Webhook] Erro ao disparar processamento:`, procErr.message);
+        }
+
+        // Atualiza last_video_id no canal
+        await supabase
+            .from("channels")
+            .update({
+                last_video_id: video.id,
+                last_checked_at: new Date().toISOString(),
+            })
+            .eq("id", channelRecord.id);
+
+    } catch (err) {
+        console.error(`[Webhook] ❌ Erro:`, err.message);
+    }
+});
+
+notifier.on("subscribe", (data) => {
+    const channelId = data.feed.split("channel_id=")[1];
+    console.log(`[Webhook] ✅ Inscrito no canal: ${channelId}`);
+});
+
+notifier.on("unsubscribe", (data) => {
+    console.log(`[Webhook] ❌ Desinscrito do canal: ${data.feed}`);
+});
+
+// Inscreve o servidor para receber notificações de um canal
+async function subscribeToChannel(youtubeChannelId) {
+    if (!youtubeChannelId) return;
+    notifier.subscribe(youtubeChannelId);
+    console.log(`[Webhook] 📡 Inscrevendo no canal: ${youtubeChannelId}`);
+}
+
+// Cancela inscrição de um canal
+async function unsubscribeFromChannel(youtubeChannelId) {
+    if (!youtubeChannelId) return;
+    notifier.unsubscribe(youtubeChannelId);
+    console.log(`[Webhook] 🔕 Cancelando inscrição: ${youtubeChannelId}`);
+}
+
+// Re-inscreve todos os canais ativos ao subir o servidor
+async function resubscribeAllChannels() {
+    const { data: channels } = await supabase
+        .from("channels")
+        .select("youtube_channel_id, title")
+        .eq("is_active", true);
+
+    if (!channels?.length) {
+        console.log("[Webhook] Nenhum canal para inscrever");
+        return;
+    }
+
+    console.log(`[Webhook] 📡 Re-inscrevendo ${channels.length} canal(is)...`);
+    for (const ch of channels) {
+        notifier.subscribe(ch.youtube_channel_id);
+        await new Promise(r => setTimeout(r, 500)); // delay entre inscrições
+    }
+}
+
+module.exports = {
+    notifier,
+    subscribeToChannel,
+    unsubscribeFromChannel,
+    resubscribeAllChannels
+};

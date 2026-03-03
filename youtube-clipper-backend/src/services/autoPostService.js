@@ -206,27 +206,47 @@ async function autoPublishReadyClips(videoId, userId) {
         return;
     }
 
+    // 1. Verificação de Conexão Direta (YouTube)
+    const youtubeService = require('./youtubeService');
+    const { data: directConn } = await supabase
+        .from("platform_connections")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("platform", "youtube")
+        .single();
+
     for (const clip of clips) {
         try {
-            let filePath;
-            if (clip.file_url && clip.file_url.startsWith("http")) {
-                filePath = await downloadClipToTemp(clip.file_url, clip.id);
-            } else if (clip.file_url) {
-                filePath = path.resolve(clip.file_url);
-            } else {
-                continue;
+            // Se tiver conexão direta com YouTube, posta por lá também
+            if (directConn) {
+                console.log(`[AutoPost] 🎯 Detectada conexão direta YouTube. Postando clip ${clip.id}...`);
+                youtubeService.uploadYouTubeShort(clip.id, userId).catch(err => {
+                    console.error(`[AutoPost] Erro no upload direto YouTube:`, err.message);
+                });
             }
 
-            await publishClip({
-                clipId: clip.id,
-                clipFilePath: filePath,
-                title: clip.hook || clip.title || "Clip automático ⚡",
-                platforms: userConfig.enabled_platforms,
-                uploadPostUser: userConfig.upload_post_username,
-            });
+            // Lógica antiga do Upload-Post (mantida como fallback ou para outras redes)
+            if (userConfig && userConfig.upload_post_username && userConfig.enabled_platforms?.length && userConfig.auto_post !== false) {
+                let filePath;
+                if (clip.file_url && clip.file_url.startsWith("http")) {
+                    filePath = await downloadClipToTemp(clip.file_url, clip.id);
+                } else if (clip.file_url) {
+                    filePath = path.resolve(clip.file_url);
+                }
 
-            if (clip.file_url.startsWith("http") && fs.existsSync(filePath)) {
-                try { fs.unlinkSync(filePath); } catch (e) { }
+                if (filePath) {
+                    await publishClip({
+                        clipId: clip.id,
+                        clipFilePath: filePath,
+                        title: clip.hook || clip.title || "Clip automático ⚡",
+                        platforms: userConfig.enabled_platforms,
+                        uploadPostUser: userConfig.upload_post_username,
+                    });
+
+                    if (clip.file_url.startsWith("http") && fs.existsSync(filePath)) {
+                        try { fs.unlinkSync(filePath); } catch (e) { }
+                    }
+                }
             }
 
             await new Promise(r => setTimeout(r, 2000));

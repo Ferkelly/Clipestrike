@@ -13,6 +13,8 @@ const monitorRoutes = require('./routes/monitor');
 const autoPostRoutes = require('./routes/autoPost');
 const userRoutes = require('./routes/user');
 const platformRoutes = require('./routes/platform');
+const webhookRoutes = require('./routes/webhookRoutes');
+const { notifier } = require('./services/webhookService');
 
 const { startMonitorCron } = require('./jobs/monitorCron');
 
@@ -36,6 +38,9 @@ const io = new Server(httpServer, {
         methods: ["GET", "POST"]
     }
 });
+
+// Webhook YouTube (Obrigatório vir antes do express.json para evitar conflito de body)
+app.use('/api/webhook/youtube', notifier.listener());
 
 // Middleware
 app.use(helmet());
@@ -82,6 +87,7 @@ app.use('/api/monitor', monitorRoutes);
 app.use('/api/autopost', autoPostRoutes);
 app.use('/api/platforms', platformRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/webhook', webhookRoutes);
 
 // Health check (Ambas as rotas para evitar erro 404)
 app.get('/health', (req, res) => {
