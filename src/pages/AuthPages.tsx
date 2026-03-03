@@ -6,24 +6,29 @@ import { Button } from "../components/ui/button";
 function AuthLayout({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans flex flex-col relative overflow-hidden">
-            {/* Background Effects (Matching Hero) */}
+        <div className="min-h-screen bg-[#0B0F19] text-white font-sans flex flex-col relative overflow-hidden">
+            {/* Background Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] opacity-40 mix-blend-screen" />
-                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-accent/20 rounded-full blur-[100px] opacity-20 mix-blend-screen" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[120px] opacity-30 mix-blend-screen" />
+                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] opacity-20 mix-blend-screen" />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-blue-900/10" />
             </div>
 
-            {/* Nav (Matching Landing Navbar) */}
-            <nav className="relative z-50 flex items-center justify-between px-8 h-20 border-b border-white/5 bg-background/50 backdrop-blur-md">
+            {/* Nav */}
+            <nav className="relative z-50 flex items-center justify-between px-8 h-20 border-b border-white/5 bg-black/20 backdrop-blur-md">
                 <div
                     className="flex items-center gap-2 cursor-pointer"
                     onClick={() => navigate("/")}
                 >
-                    <Zap className="h-6 w-6 text-primary animate-flicker" fill="currentColor" />
-                    <span className="font-display text-2xl tracking-wider pt-1">CLIPSTRIKE</span>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+                        <Zap className="h-5 w-5 text-white" fill="currentColor" />
+                    </div>
+                    <span className="font-display text-xl font-bold tracking-tight bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 bg-clip-text text-transparent">
+                        EasySlice.AI
+                    </span>
                 </div>
                 <Link to="/">
-                    <Button variant="ghost" className="text-sm hover:text-primary">Voltar para Home</Button>
+                    <Button variant="ghost" className="text-sm text-white/60 hover:text-white hover:bg-white/5">Back to Home</Button>
                 </Link>
             </nav>
 
@@ -33,11 +38,83 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
                 </div>
             </div>
 
-            {/* Footer hint */}
-            <div className="relative z-10 py-6 text-center text-xs text-muted-foreground border-t border-white/5">
-                &copy; {new Date().getFullYear()} ClipStrike. Todos os direitos reservados.
+            <div className="relative z-10 py-6 text-center text-xs text-white/30 border-t border-white/5">
+                &copy; {new Date().getFullYear()} EasySlice.AI. All rights reserved.
             </div>
+            <style>{`
+                .fade-in {
+                    animation: authFadeIn 0.6s ease-out forwards;
+                }
+                @keyframes authFadeIn {
+                    from { opacity: 0; transform: translateY(14px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
+    );
+}
+
+export function SignupPage() {
+    const navigate = useNavigate();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleSignup = (e: React.FormEvent) => {
+        e.preventDefault();
+        localStorage.setItem("clipstrike_token", "dummy_token");
+        navigate("/setup/channel");
+    };
+
+    return (
+        <AuthLayout>
+            <div className="bg-white/5 border border-white/10 backdrop-blur-2xl rounded-2xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] fade-in">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold tracking-tight mb-2">Sign Up</h2>
+                    <p className="text-sm text-white/50">Create your EasySlice.AI account to get started.</p>
+                </div>
+
+                <form onSubmit={handleSignup} className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Email</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-white/20"
+                            placeholder="name@example.com"
+                            required
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Password</label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-white/20"
+                            placeholder="••••••••"
+                            required
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:scale-[1.01] transition-all mt-6"
+                    >
+                        Sign Up
+                    </button>
+                </form>
+
+                <div className="mt-8 text-center pt-6 border-t border-white/5">
+                    <p className="text-sm text-white/50">
+                        Already have an account?{" "}
+                        <Link to="/login" className="text-white hover:text-purple-400 font-bold transition-colors">
+                            Sign in
+                        </Link>
+                    </p>
+                </div>
+            </div>
+        </AuthLayout>
     );
 }
 
@@ -48,130 +125,55 @@ export function LoginPage() {
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        // Logic here
-        localStorage.setItem("token", "dummy_token");
+        localStorage.setItem("clipstrike_token", "dummy_token");
         navigate("/dashboard");
     };
 
     return (
         <AuthLayout>
-            <div className="glass-card rounded-2xl p-8 border-gradient">
+            <div className="bg-white/5 border border-white/10 backdrop-blur-2xl rounded-2xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] fade-in">
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-display mb-2">Bem-vindo de volta</h2>
-                    <p className="text-sm text-muted-foreground">Entre na sua conta para gerenciar seus clips</p>
+                    <h2 className="text-3xl font-bold tracking-tight mb-2">Welcome Back</h2>
+                    <p className="text-sm text-white/50">Login to your account to continue</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">E-mail</label>
+                        <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Email</label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                            placeholder="seu@email.com"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-white/20"
+                            placeholder="name@example.com"
                             required
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Senha</label>
+                        <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Password</label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-white/20"
                             placeholder="••••••••"
                             required
                         />
                     </div>
-                    <Button
+
+                    <button
                         type="submit"
-                        className="w-full h-12 rounded-xl bg-gradient-primary text-white font-bold glow-effect hover:scale-[1.02] transition-transform border-0 mt-6"
+                        className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:scale-[1.01] transition-all mt-6"
                     >
-                        Entrar
-                    </Button>
+                        Sign In
+                    </button>
                 </form>
 
                 <div className="mt-8 text-center pt-6 border-t border-white/5">
-                    <p className="text-sm text-muted-foreground">
-                        Não tem uma conta?{" "}
-                        <Link to="/signup" className="text-primary hover:underline font-bold">
-                            Cadastre-se grátis
-                        </Link>
-                    </p>
-                </div>
-            </div>
-        </AuthLayout>
-    );
-}
-
-export function SignupPage() {
-    const navigate = useNavigate();
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-
-    const handleSignup = (e: React.FormEvent) => {
-        e.preventDefault();
-        localStorage.setItem("token", "dummy_token");
-        navigate("/setup/channel");
-    };
-
-    return (
-        <AuthLayout>
-            <div className="glass-card rounded-2xl p-8 border-gradient">
-                <div className="text-center mb-8">
-                    <h2 className="text-3xl font-display mb-2">Criar conta</h2>
-                    <p className="text-sm text-muted-foreground">Comece a automatizar seus clips hoje mesmo</p>
-                </div>
-
-                <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Nome Completo</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                            placeholder="Seu Nome"
-                            required
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">E-mail</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                            placeholder="seu@email.com"
-                            required
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Senha</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                            placeholder="••••••••"
-                            required
-                        />
-                    </div>
-                    <Button
-                        type="submit"
-                        className="w-full h-12 rounded-xl bg-gradient-primary text-white font-bold glow-effect hover:scale-[1.02] transition-transform border-0 mt-6"
-                    >
-                        Cadastrar
-                    </Button>
-                </form>
-
-                <div className="mt-8 text-center pt-6 border-t border-white/5">
-                    <p className="text-sm text-muted-foreground">
-                        Já tem uma conta?{" "}
-                        <Link to="/login" className="text-primary hover:underline font-bold">
-                            Fazer login
+                    <p className="text-sm text-white/50">
+                        Don't have an account?{" "}
+                        <Link to="/signup" className="text-white hover:text-purple-400 font-bold transition-colors">
+                            Sign up for free
                         </Link>
                     </p>
                 </div>
