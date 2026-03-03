@@ -545,10 +545,9 @@ export default function NovoVideoPage() {
                                             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500"><VideoIcon className="w-4 h-4" /></div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-xs font-bold">B-Roll IA (Pexels)</p>
-                                                    <span className="text-[8px] font-black bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">BETA</span>
+                                                    <p className="text-xs font-bold">B-Roll Automático (IA)</p>
                                                 </div>
-                                                <p className="text-[10px] text-white/30">Insere vídeos contextuais</p>
+                                                <p className="text-[10px] text-white/30">Insere vídeos contextuais do Pexels</p>
                                             </div>
                                         </div>
                                         <button

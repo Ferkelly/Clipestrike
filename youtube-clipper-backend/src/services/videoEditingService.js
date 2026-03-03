@@ -2,6 +2,7 @@ const { exec } = require('child_process');
 const { promisify } = require('util');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const fetch = require('node-fetch');
 const logger = require('../utils/logger');
 
@@ -174,7 +175,7 @@ async function addBRoll(inputPath, transcriptionSegments, options = {}) {
         for (const seg of chosen) {
             const keyword = extractKeyword(seg.text);
             const duration = seg.end - seg.start;
-            const tmpPath = path.join('/tmp', `broll_${Date.now()}_${keyword}.mp4`);
+            const tmpPath = path.join(os.tmpdir(), `broll_${Date.now()}_${keyword}.mp4`);
 
             logger.info(`[BRoll] Buscando "${keyword}" para ${duration.toFixed(1)}s...`);
             const success = await downloadPexelsVideo(keyword, duration, tmpPath);
@@ -194,7 +195,7 @@ async function addBRoll(inputPath, transcriptionSegments, options = {}) {
         for (let i = 0; i < brollFiles.length; i++) {
             const br = brollFiles[i];
             const duration = br.end - br.start;
-            const trimmedPath = path.join('/tmp', `broll_trim_${i}_${Date.now()}.mp4`);
+            const trimmedPath = path.join(os.tmpdir(), `broll_trim_${i}_${Date.now()}.mp4`);
 
             await execAsync(
                 `ffmpeg -i "${br.path}" ` +
