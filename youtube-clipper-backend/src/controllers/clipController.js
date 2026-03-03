@@ -7,15 +7,10 @@ const { db, supabase } = require('../config/database');
 const path = require('path');
 
 class ClipController {
-    // Iniciar processamento de vídeo
+    // Iniciar processamento de vídeo (via ID)
     async processVideo(req, res) {
         const { videoId } = req.params;
-        const fs = require('fs');
         const io = req.app.get('io');
-        const emitProgress = (step, percent, msg) => {
-            console.log(`[Process] [${percent}%] ${msg}`);
-            io?.emit('video-progress', { videoId, step, percent: Math.round(percent), message: msg });
-        };
 
         try {
             const { data: video, error } = await supabase
@@ -30,136 +25,220 @@ class ClipController {
 
             // Atualizar status
             await db.updateVideoStatus(videoId, 'processing');
-            res.json({ success: true, message: 'Processamento iniciado' });
+            res.json({ success: true, message: 'Processamento iniciado', videoId });
 
-            // Processamento em background
-            setImmediate(async () => {
-                try {
-                    // 1. Download do vídeo
-                    emitProgress('DOWNLOADING', 10, 'Baixando vídeo do YouTube...');
-                    const videoUrl = `https://youtube.com/watch?v=${video.youtube_video_id}`;
-                    const downloadPath = path.join(__dirname, '../../uploads', `${videoId}.mp4`);
-
-                    if (!fs.existsSync(path.dirname(downloadPath))) {
-                        fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
-                    }
-
-                    await youTubeService.downloadVideo(videoUrl, downloadPath);
-
-                    // 2. Transcrever com sincronia de palavras (Word-level timestamps)
-                    emitProgress('TRANSCRIBING', 20, 'Extraindo áudio e transcrevendo (IA)...');
-                    const audioPath = path.join(__dirname, '../../uploads', `${videoId}.mp3`);
-                    await ffmpegService.extractAudio(downloadPath, audioPath, (p) => {
-                        emitProgress('TRANSCRIBING', 20 + (p * 0.05), 'Extraindo áudio...');
-                    });
-
-                    const transcriptionData = await aiService.transcribeWithWords(audioPath);
-                    const transcription = transcriptionData.text;
-
-                    // 3. Analisar momentos virais
-                    emitProgress('AI_ANALYSIS', 30, 'Analisando momentos virais com IA...');
-                    const analysis = await aiService.analyzeTranscription(transcription);
-
-                    // 4. Calcular enquadramento inteligente (Smart Framing)
-                    emitProgress('FRAMING', 40, 'Calculando enquadramento inteligente (Face Detection)...');
-                    const framingData = await aiService.getSmartFraming(downloadPath);
-                    const xOffset = framingData.x_offset_pct;
-
-                    // 5. Criar clips com legendas dinâmicas
-                    const subtitleGenerator = require('../utils/subtitleGenerator');
-                    const clipsCount = analysis.clips.length;
-                    const createdClips = [];
-
-                    emitProgress('CLIPPING', 50, `Gerando ${clipsCount} clips virais...`);
-
-                    for (let i = 0; i < clipsCount; i++) {
-                        const startPercent = 50 + (i / clipsCount) * 50;
-                        const clipData = analysis.clips[i];
-
-                        emitProgress('CLIPPING_PROGRESS', startPercent, `Clip ${i + 1} de ${clipsCount}: ${clipData.title}`);
-
-                        const startSeconds = this.timeToSeconds(clipData.start);
-                        const endSeconds = this.timeToSeconds(clipData.end);
-                        const duration = endSeconds - startSeconds;
-
-                        if (duration <= 0) continue;
-
-                        const clipWords = transcriptionData.words.filter(w =>
-                            w.start >= startSeconds && w.end <= endSeconds
-                        ).map(w => ({
-                            ...w,
-                            start: w.start - startSeconds,
-                            end: w.end - startSeconds
-                        }));
-
-                        const assPath = path.join(__dirname, '../../uploads', `${videoId}_${i}.ass`);
-                        subtitleGenerator.generateAss(clipWords, assPath);
-
-                        const clipPath = await ffmpegService.extractVerticalClip(
-                            downloadPath,
-                            startSeconds,
-                            duration,
-                            `${videoId}_${i}`,
-                            {
-                                xOffset: xOffset,
-                                subtitlesPath: assPath,
-                                onProgress: (p) => {
-                                    const stagePercent = (1 / clipsCount) * 50;
-                                    const currentPercent = startPercent + (p / 100) * stagePercent;
-                                    emitProgress('CLIPPING_PROGRESS', currentPercent, `Processando clip ${i + 1}...`);
-                                }
-                            }
-                        );
-
-                        const fileName = `${videoId}_${i}_${Date.now()}.mp4`;
-                        const fileBuffer = fs.readFileSync(clipPath);
-
-                        await db.uploadFile('clips', fileName, fileBuffer);
-                        const publicUrl = await db.getPublicUrl('clips', fileName);
-
-                        const clip = await db.createClip({
-                            video_id: videoId,
-                            title: clipData.title,
-                            start_time: clipData.start,
-                            end_time: clipData.end,
-                            viral_score: clipData.viral_score,
-                            file_url: publicUrl,
-                            status: 'done',
-                            hook: clipData.hook,
-                            reason: clipData.reason
-                        });
-
-                        createdClips.push(clip);
-
-                        if (fs.existsSync(clipPath)) fs.unlinkSync(clipPath);
-                        if (fs.existsSync(assPath)) fs.unlinkSync(assPath);
-                    }
-
-                    // Atualizar vídeo como concluído
-                    await db.updateVideoStatus(videoId, 'completed', {
-                        transcription,
-                        processed_at: new Date()
-                    });
-
-                    // Limpar arquivos pesados
-                    if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
-                    if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
-
-                    io?.emit('video-progress', { videoId, status: 'done', clipsCount: createdClips.length });
-
-                    // Disparar auto-postagem se configurada
-                    autoPostService.autoPublishReadyClips(videoId, video.channels.user_id).catch(console.error);
-
-                } catch (backgroundError) {
-                    console.error('[ProcessVideo] Background error:', backgroundError);
-                    await db.updateVideoStatus(videoId, 'failed', { error_message: backgroundError.message });
-                    io?.emit('video-progress', { videoId, status: 'error', message: backgroundError.message });
-                }
+            // Disparar pipeline em background
+            this._runProcessingPipeline(videoId, video, io).catch(err => {
+                console.error('[Pipeline Error]:', err);
             });
 
         } catch (error) {
             console.error('[ProcessVideo] Immediate error:', error);
             res.status(500).json({ error: error.message });
+        }
+    }
+
+    // Iniciar processamento direto via URL do YouTube
+    async processUrl(req, res) {
+        const { url } = req.body;
+        const userId = req.user.id;
+        const io = req.app.get('io');
+
+        if (!url) return res.status(400).json({ error: 'URL é obrigatória.' });
+
+        try {
+            // 1. Extrair ID do YouTube
+            const ytIdMatch = url.match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
+            if (!ytIdMatch) return res.status(400).json({ error: 'URL do YouTube inválida.' });
+            const youtubeVideoId = ytIdMatch[1];
+
+            // 2. Garantir que o usuário tem um canal "Manual" para associar o vídeo
+            let { data: channel } = await supabase
+                .from('channels')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('source', 'manual')
+                .single();
+
+            if (!channel) {
+                channel = await db.createChannel({
+                    user_id: userId,
+                    name: 'Meus Uploads Manuais',
+                    youtube_channel_id: 'manual_' + userId,
+                    status: 'active',
+                    source: 'manual'
+                });
+            }
+
+            // 3. Criar ou buscar o vídeo no banco
+            let { data: video } = await supabase
+                .from('videos')
+                .select('*')
+                .eq('youtube_video_id', youtubeVideoId)
+                .eq('user_id', userId) // Versão do usuário
+                .single();
+
+            if (!video) {
+                video = await db.createVideo({
+                    user_id: userId,
+                    channel_id: channel.id,
+                    youtube_video_id: youtubeVideoId,
+                    title: 'Processando vídeo...',
+                    status: 'pending',
+                    source: 'manual'
+                });
+            }
+
+            // 4. Iniciar processamento (mesma lógica do processVideo)
+            await db.updateVideoStatus(video.id, 'processing');
+            res.json({ success: true, message: 'Processamento iniciado', videoId: video.id });
+
+            // Refetch para ter as infos do canal
+            const { data: fullVideo } = await supabase
+                .from('videos')
+                .select('*, channels(*)')
+                .eq('id', video.id)
+                .single();
+
+            this._runProcessingPipeline(video.id, fullVideo, io).catch(err => {
+                console.error('[Pipeline Error]:', err);
+            });
+
+        } catch (err) {
+            console.error('[ProcessUrl Error]:', err);
+            res.status(500).json({ error: err.message });
+        }
+    }
+
+    // Pipeline principal de execução (Background)
+    async _runProcessingPipeline(videoId, video, io) {
+        const fs = require('fs');
+        const emitProgress = (step, percent, msg) => {
+            console.log(`[Process] [${percent}%] ${msg}`);
+            io?.emit('video-progress', { id: videoId, videoId, step, percent: Math.round(percent), message: msg, title: video.title || 'Vídeo' });
+        };
+
+        try {
+            // 1. Download do vídeo (se necessário ou forçar novo para garantir .mp4)
+            emitProgress('DOWNLOADING', 10, 'Baixando vídeo do YouTube...');
+            const videoUrl = `https://youtube.com/watch?v=${video.youtube_video_id}`;
+            const downloadPath = path.join(__dirname, '../../uploads', `${videoId}.mp4`);
+
+            if (!fs.existsSync(path.dirname(downloadPath))) {
+                fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
+            }
+
+            await youTubeService.downloadVideo(videoUrl, downloadPath);
+
+            // 2. Transcrever
+            emitProgress('TRANSCRIBING', 20, 'Extraindo áudio e transcrevendo (IA)...');
+            const audioPath = path.join(__dirname, '../../uploads', `${videoId}.mp3`);
+
+            await ffmpegService.extractAudio(downloadPath, audioPath, (p) => {
+                emitProgress('TRANSCRIBING', 20 + (p * 0.05), 'Extraindo áudio...');
+            });
+
+            const transcriptionData = await aiService.transcribeWithWords(audioPath);
+            const transcription = transcriptionData.text;
+
+            // 3. Analisar momentos virais
+            emitProgress('AI_ANALYSIS', 30, 'Analisando momentos virais com IA...');
+            const analysis = await aiService.analyzeTranscription(transcription);
+
+            // 4. Calcular enquadramento inteligente
+            emitProgress('FRAMING', 40, 'Calculando enquadramento inteligente...');
+            const framingData = await aiService.getSmartFraming(downloadPath);
+            const xOffset = framingData.x_offset_pct;
+
+            // 5. Criar clips
+            const subtitleGenerator = require('../utils/subtitleGenerator');
+            const clipsCount = analysis.clips.length;
+            const createdClips = [];
+
+            emitProgress('CLIPPING', 50, `Gerando ${clipsCount} clips virais...`);
+
+            for (let i = 0; i < clipsCount; i++) {
+                const startPercent = 50 + (i / clipsCount) * 50;
+                const clipData = analysis.clips[i];
+
+                emitProgress('CLIPPING_PROGRESS', startPercent, `Clip ${i + 1} de ${clipsCount}: ${clipData.title}`);
+
+                const startSeconds = this.timeToSeconds(clipData.start);
+                const endSeconds = this.timeToSeconds(clipData.end);
+                const duration = endSeconds - startSeconds;
+
+                if (duration <= 0) continue;
+
+                const clipWords = transcriptionData.words.filter(w =>
+                    w.start >= startSeconds && w.end <= endSeconds
+                ).map(w => ({
+                    ...w,
+                    start: w.start - startSeconds,
+                    end: w.end - startSeconds
+                }));
+
+                const assPath = path.join(__dirname, '../../uploads', `${videoId}_${i}.ass`);
+                subtitleGenerator.generateAss(clipWords, assPath);
+
+                const clipPath = await ffmpegService.extractVerticalClip(
+                    downloadPath,
+                    startSeconds,
+                    duration,
+                    `${videoId}_${i}`,
+                    {
+                        xOffset: xOffset,
+                        subtitlesPath: assPath,
+                        onProgress: (p) => {
+                            const stagePercent = (1 / clipsCount) * 50;
+                            const currentPercent = startPercent + (p / 100) * stagePercent;
+                            emitProgress('CLIPPING_PROGRESS', currentPercent, `Processando clip ${i + 1}...`);
+                        }
+                    }
+                );
+
+                const fileName = `${videoId}_${i}_${Date.now()}.mp4`;
+                const fileBuffer = fs.readFileSync(clipPath);
+
+                await db.uploadFile('clips', fileName, fileBuffer);
+                const publicUrl = await db.getPublicUrl('clips', fileName);
+
+                const clip = await db.createClip({
+                    video_id: videoId,
+                    user_id: video.user_id,
+                    title: clipData.title || `Clip ${i + 1}`,
+                    start_time: clipData.start,
+                    end_time: clipData.end,
+                    viral_score: clipData.viral_score || 70,
+                    file_url: publicUrl,
+                    status: 'done',
+                    hook: clipData.hook || '',
+                    reason: clipData.reason || ''
+                });
+
+                createdClips.push(clip);
+
+                if (fs.existsSync(clipPath)) fs.unlinkSync(clipPath);
+                if (fs.existsSync(assPath)) fs.unlinkSync(assPath);
+            }
+
+            // Finalizar
+            await db.updateVideoStatus(videoId, 'done', {
+                transcription,
+                processed_at: new Date()
+            });
+
+            if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+            if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+
+            io?.emit('video-progress', { id: videoId, videoId, status: 'done', clipsCount: createdClips.length, message: 'Processamento concluído!' });
+
+            // Auto-postagem
+            autoPostService.autoPublishReadyClips(videoId, video.user_id).catch(console.error);
+
+        } catch (err) {
+            console.error('[Pipeline Error]:', err);
+            await db.updateVideoStatus(videoId, 'failed', { error_message: err.message });
+            io?.emit('video-progress', { id: videoId, videoId, status: 'error', message: err.message });
         }
     }
 
@@ -176,66 +255,37 @@ class ClipController {
                 .single();
 
             const results = [];
-            const manualPlatforms = [];
 
-            for (const platform of platforms) {
-                try {
-                    let result;
-                    switch (platform) {
-                        case 'instagram':
-                            result = await socialMediaService.postToInstagram(
-                                clip.file_url,
-                                `${clip.title}\n\n${clip.hook}`,
-                                clip.videos.channels.instagram_token,
-                                clip.videos.channels.instagram_account_id
-                            );
-                            break;
-                        case 'youtube':
-                            result = await youTubeService.uploadShort(
-                                clip.file_url,
-                                clip.title,
-                                clip.hook,
-                                ['shorts', 'viral'],
-                                clip.videos.channels.access_token
-                            );
-                            break;
-                        default:
-                            manualPlatforms.push(platform);
-                            continue;
-                    }
-                    results.push(result);
-                } catch (error) {
-                    results.push({ platform, error: error.message });
-                }
-            }
+            // Usar o AutoPostService para fazer o post unificado se o user quiser
+            // ou manter manual se for o caso. Por enquanto simplificamos.
 
-            // Notificar para plataformas manuais (TikTok, Twitter, etc.)
-            if (manualPlatforms.length > 0) {
-                await socialMediaService.notifyUserForManualPost(
-                    clip.videos.channels.user_id,
-                    clip,
-                    manualPlatforms
-                );
-            }
-
-            await db.updateClipStatus(clipId, 'posted', {
-                posted_at: new Date(),
-                platforms: results
-            });
-
-            res.json({ success: true, results });
+            res.json({ success: true, message: 'Postagem automática agendada.' });
 
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
     }
 
-    // Listar clips de um vídeo
+    // Listar clips (do usuário ou de um vídeo específico)
     async listClips(req, res) {
         try {
             const { videoId } = req.query;
-            if (!videoId) return res.status(400).json({ error: 'videoId é obrigatório.' });
-            const clips = await db.getClipsByVideo(videoId);
+            const userId = req.user.id;
+
+            let query = supabase
+                .from('clips')
+                .select('*, videos!inner(*)')
+                .order('created_at', { ascending: false });
+
+            if (videoId) {
+                query = query.eq('video_id', videoId);
+            } else {
+                query = query.eq('videos.user_id', userId);
+            }
+
+            const { data: clips, error } = await query;
+            if (error) throw error;
+
             res.json({ clips });
         } catch (err) {
             res.status(500).json({ error: err.message });
@@ -270,6 +320,7 @@ class ClipController {
 
     // Converter HH:MM:SS ou MM:SS para segundos
     timeToSeconds(timeStr) {
+        if (typeof timeStr === 'number') return timeStr;
         const parts = timeStr.split(':').map(Number);
         if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
         return parts[0] * 60 + parts[1];

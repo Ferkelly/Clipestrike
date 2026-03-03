@@ -12,6 +12,9 @@ router.get('/:clipId', authenticate, (req, res) => clipController.getClip(req, r
 // POST   /api/clips/video/:videoId/process → Pipeline completa: download → audio → AI → FFmpeg → storage
 router.post('/video/:videoId/process', authenticate, (req, res) => clipController.processVideo(req, res));
 
+// POST   /api/clips/process-url          → Processar vídeo diretamente via URL do YouTube
+router.post('/process-url', authenticate, (req, res) => clipController.processUrl(req, res));
+
 // POST   /api/clips/:clipId/autopost  → Auto-postar nas redes sociais
 router.post('/:clipId/autopost', authenticate, (req, res) => clipController.autoPost(req, res));
 
