@@ -197,6 +197,28 @@ export default function DashboardPage() {
         }
     };
 
+    const handleManualPost = async (clipId: string) => {
+        if (!platformConfig.configured) {
+            alert("Configure suas plataformas primeiro na aba Plataformas.");
+            setActiveTab("platforms");
+            return;
+        }
+        if (!confirm("Deseja publicar este clip agora nas plataformas configuradas?")) return;
+
+        try {
+            const token = localStorage.getItem("clipstrike_token");
+            const res = await fetch(`${API_URL}/autopost/clip/${clipId}`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await res.json();
+            alert(data.message || "Postagem iniciada!");
+            fetchClips(); // Refresh status
+        } catch (err: any) {
+            alert("Erro ao publicar: " + err.message);
+        }
+    };
+
     const fetchPlatformStatus = async () => {
         try {
             const token = localStorage.getItem("clipstrike_token");
@@ -413,6 +435,13 @@ export default function DashboardPage() {
                                             </div>
 
                                             <div className="flex items-center gap-3 ml-auto px-4">
+                                                <button
+                                                    onClick={() => handleManualPost(clip.id)}
+                                                    title="Publicar nas Redes"
+                                                    className="p-3 bg-primary/10 border border-primary/20 rounded-xl hover:bg-primary/20 text-primary transition-all"
+                                                >
+                                                    <Share2 className="w-5 h-5" />
+                                                </button>
                                                 <button onClick={() => window.open(clip.file_url, '_blank')} className="p-3 bg-white/5 border border-white/10 rounded-xl hover:text-primary transition-all">
                                                     <Download className="w-5 h-5" />
                                                 </button>
@@ -630,8 +659,8 @@ export default function DashboardPage() {
                                             key={p.id}
                                             onClick={() => toggleModalPlatform(p.id)}
                                             className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-bold transition-all ${checked
-                                                    ? "bg-primary/10 border-primary/40 text-white"
-                                                    : "bg-white/[0.02] border-white/10 text-white/40 hover:border-white/20"
+                                                ? "bg-primary/10 border-primary/40 text-white"
+                                                : "bg-white/[0.02] border-white/10 text-white/40 hover:border-white/20"
                                                 }`}
                                         >
                                             <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? "bg-primary border-primary" : "border-white/20"}`}>
