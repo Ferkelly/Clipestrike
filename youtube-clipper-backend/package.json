@@ -20,17 +20,18 @@
         "googleapis": "^126.0.1",
         "helmet": "^7.0.0",
         "jsonwebtoken": "^9.0.2",
+        "multer": "^1.4.5-lts.1",
         "node-fetch": "^2.7.0",
         "passport": "^0.6.0",
         "passport-google-oauth20": "^2.0.0",
         "socket.io": "^4.7.2",
         "upload-post": "^2.0.4",
         "winston": "^3.10.0",
-        "yt-dlp-exec": "^1.0.2"
+        "yt-dlp-exec": "^1.0.2",
+        "youtube-notification": "^1.2.0"
     },
     "devDependencies": {
         "@types/multer": "^2.0.0",
-        "multer": "^2.1.0",
         "nodemon": "^3.0.1"
     }
 }
