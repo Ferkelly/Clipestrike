@@ -73,6 +73,11 @@ app.set('io', io);
 io.on('connection', (socket) => {
     console.log('Cliente conectado:', socket.id);
 
+    socket.on('join-user-room', (userId) => {
+        socket.join(userId);
+        console.log(`[Socket] Usuário ${userId} entrou na sala`);
+    });
+
     socket.on('join_channel', (channelId) => {
         socket.join(`channel_${channelId}`);
     });
