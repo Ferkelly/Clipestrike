@@ -1,6 +1,6 @@
 // ============================================================
 // services/autoPostService.js
-// Publica clips nas redes sociais via Upload-Post.com SDK
+// Publica clips nas redes sociais via Upload-Post.com SDK (White-Label)
 // ============================================================
 
 const { UploadPost } = require("upload-post");
@@ -8,6 +8,86 @@ const { supabase } = require("../config/database");
 const path = require("path");
 const fs = require("fs");
 const axios = require("axios");
+
+const UPLOAD_POST_API = "https://api.upload-post.com/api/uploadposts";
+const API_KEY = process.env.UPLOAD_POST_API_KEY;
+
+/**
+ * Gera um link de conexão personalizado (OAuth White-Label) para o usuário
+ */
+async function getConnectUrl(userId) {
+    const username = `clipstrike_${userId}`;
+
+    try {
+        // 1. Criar perfil no Upload-Post (se não existir)
+        await axios.post(`${UPLOAD_POST_API}/users`, { username }, {
+            headers: { "Authorization": `ApiKey ${API_KEY}` }
+        }).catch(err => {
+            // Ignorar erro 409 (usuário já existe)
+            if (err.response?.status !== 409) throw err;
+        });
+
+        // 2. Gerar JWT de acesso para esse usuário
+        const jwtRes = await axios.post(`${UPLOAD_POST_API}/users/generate-jwt`, {
+            username,
+            redirect_url: `${process.env.FRONTEND_URL}/dashboard/plataformas?connected=true`,
+            logo_image: "https://www.clipstrike.tech/logo.png",
+            connect_title: "Conecte suas redes ao ClipStrike",
+            connect_description: "Escolha as plataformas onde seus clips serão publicados automaticamente.",
+        }, {
+            headers: { "Authorization": `ApiKey ${API_KEY}` }
+        });
+
+        if (!jwtRes.data?.access_url) {
+            throw new Error("Falha ao gerar URL de conexão");
+        }
+
+        // 3. Salvar username no banco para garantir
+        await supabase
+            .from("user_platform_configs")
+            .upsert({
+                user_id: userId,
+                upload_post_username: username,
+                updated_at: new Date().toISOString(),
+            }, { onConflict: "user_id" });
+
+        return {
+            connectUrl: jwtRes.data.access_url,
+            expiresIn: jwtRes.data.duration
+        };
+    } catch (err) {
+        console.error("[AutoPostService] Error in getConnectUrl:", err.message);
+        throw err;
+    }
+}
+
+/**
+ * Busca o status das contas sociais conectadas no Upload-Post
+ */
+async function getPlatformStatus(userId) {
+    const username = `clipstrike_${userId}`;
+
+    try {
+        const profileRes = await axios.get(`${UPLOAD_POST_API}/users/${username}`, {
+            headers: { "Authorization": `ApiKey ${API_KEY}` },
+        });
+
+        const profile = profileRes.data;
+        const socialAccounts = profile.profile?.social_accounts || {};
+
+        return {
+            connected: true,
+            platforms: socialAccounts,
+            uploadPostUser: username
+        };
+    } catch (err) {
+        if (err.response?.status === 404) {
+            return { connected: false, platforms: {} };
+        }
+        console.error("[AutoPostService] Error in getPlatformStatus:", err.message);
+        throw err;
+    }
+}
 
 /**
  * Publica um clip em múltiplas plataformas usando o Upload-Post.com
@@ -18,30 +98,25 @@ async function publishClip(options) {
         clipFilePath,
         title,
         platforms,
-        uploadPostUser,
+        uploadPostUser, // Agora usamos o upload_post_username (clipstrike_ID)
         scheduledDate,
     } = options;
 
     console.log(`[AutoPost] 🚀 Publicando clip "${title}" em: ${platforms.join(", ")}`);
 
-    // Valida que o arquivo existe
     if (!fs.existsSync(clipFilePath)) {
         throw new Error(`Arquivo não encontrado: ${clipFilePath}`);
     }
 
-    // Inicializa o cliente Upload-Post com a API key do .env
-    const client = new UploadPost(process.env.UPLOAD_POST_API_KEY);
-
+    const client = new UploadPost(API_KEY);
     const results = [];
 
     try {
-        // Atualiza status no Supabase para 'posting'
         await supabase
             .from("clips")
             .update({ post_status: "posting" })
             .eq("id", clipId);
 
-        // Faz o upload para todas as plataformas de uma vez
         const response = await client.upload(clipFilePath, {
             title,
             user: uploadPostUser,
@@ -55,7 +130,6 @@ async function publishClip(options) {
 
         console.log(`[AutoPost] ✅ Upload concluído:`, response);
 
-        // Monta resultado por plataforma
         for (const platform of platforms) {
             results.push({
                 platform,
@@ -64,7 +138,6 @@ async function publishClip(options) {
             });
         }
 
-        // Salva resultado no Supabase
         await supabase
             .from("clips")
             .update({
@@ -105,8 +178,6 @@ async function publishClip(options) {
 async function autoPublishReadyClips(videoId, userId) {
     console.log(`[AutoPost] 📋 Verificando clips prontos para auto-post (Video: ${videoId})...`);
 
-    // Busca clips prontos que ainda não foram publicados
-    // Nota: Alinhando com status 'done' da nova especificação
     const { data: clips, error } = await supabase
         .from("clips")
         .select("*")
@@ -119,19 +190,17 @@ async function autoPublishReadyClips(videoId, userId) {
         return;
     }
 
-    // Busca configuração de plataformas do usuário
     const { data: userConfig } = await supabase
         .from("user_platform_configs")
         .select("*")
         .eq("user_id", userId)
         .single();
 
-    if (!userConfig || !userConfig.upload_post_user || !userConfig.enabled_platforms?.length) {
-        console.log(`[AutoPost] ⚠️  Usuário não tem plataformas configuradas ou auto_post desligado`);
+    if (!userConfig || !userConfig.upload_post_username || !userConfig.enabled_platforms?.length) {
+        console.log(`[AutoPost] ⚠️ Usuário não configurado para auto-post`);
         return;
     }
 
-    // Só publica se o auto_post estiver ligado (se o campo existir, senão assume true se configurado)
     if (userConfig.auto_post === false) {
         console.log(`[AutoPost] ⏸ Auto-post desativado para o usuário`);
         return;
@@ -139,14 +208,12 @@ async function autoPublishReadyClips(videoId, userId) {
 
     for (const clip of clips) {
         try {
-            // Resolve o caminho do arquivo
             let filePath;
             if (clip.file_url && clip.file_url.startsWith("http")) {
                 filePath = await downloadClipToTemp(clip.file_url, clip.id);
             } else if (clip.file_url) {
                 filePath = path.resolve(clip.file_url);
             } else {
-                console.log(`[AutoPost] ⏭ Clip ${clip.id} sem URL de arquivo`);
                 continue;
             }
 
@@ -155,15 +222,13 @@ async function autoPublishReadyClips(videoId, userId) {
                 clipFilePath: filePath,
                 title: clip.hook || clip.title || "Clip automático ⚡",
                 platforms: userConfig.enabled_platforms,
-                uploadPostUser: userConfig.upload_post_user,
+                uploadPostUser: userConfig.upload_post_username,
             });
 
-            // Limpa arquivo temporário se foi baixado
             if (clip.file_url.startsWith("http") && fs.existsSync(filePath)) {
                 try { fs.unlinkSync(filePath); } catch (e) { }
             }
 
-            // Delay entre posts
             await new Promise(r => setTimeout(r, 2000));
         } catch (err) {
             console.error(`[AutoPost] Erro no loop de auto-post:`, err.message);
@@ -171,9 +236,6 @@ async function autoPublishReadyClips(videoId, userId) {
     }
 }
 
-/**
- * Download temporário se o clip estiver no Storage
- */
 async function downloadClipToTemp(url, clipId) {
     const uploadsDir = path.join(process.cwd(), "uploads");
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -195,7 +257,9 @@ async function downloadClipToTemp(url, clipId) {
 }
 
 module.exports = {
+    getConnectUrl,
+    getPlatformStatus,
     publishClip,
     autoPublishReadyClips,
-    downloadClipToTemp // Exportando para uso dinâmico se necessário
+    downloadClipToTemp
 };

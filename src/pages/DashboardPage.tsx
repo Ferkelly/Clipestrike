@@ -117,7 +117,9 @@ export default function DashboardPage() {
         enabledPlatforms: string[];
         uploadPostUser?: string;
         autoPost?: boolean;
+        realPlatforms?: Record<string, any>;
     }>({ configured: false, enabledPlatforms: [] });
+    const [directConnections, setDirectConnections] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(true);
 
     // ── Upload-Post Modal ────────────────────────────────────────────────────
@@ -144,8 +146,24 @@ export default function DashboardPage() {
         );
     };
 
+    const handleConnectPlatforms = async () => {
+        try {
+            const token = localStorage.getItem("clipstrike_token");
+            const res = await fetch(`${API_URL}/autopost/connect`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.connectUrl) {
+                window.location.href = data.connectUrl;
+            } else {
+                throw new Error(data.error || "Falha ao gerar link de conexão");
+            }
+        } catch (err: any) {
+            alert("Erro: " + err.message);
+        }
+    };
+
     const handleSavePlatforms = async () => {
-        if (!modalUsername.trim()) { setModalError("Informe seu username do Upload-Post."); return; }
         if (modalPlatforms.length === 0) { setModalError("Selecione ao menos uma plataforma."); return; }
         setModalSaving(true); setModalError(""); setModalSuccess("");
         try {
@@ -153,12 +171,12 @@ export default function DashboardPage() {
             const res = await fetch(`${API_URL}/autopost/platforms/config`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify({ uploadPostUser: modalUsername.trim(), enabledPlatforms: modalPlatforms, autoPost: modalAutoPost }),
+                body: JSON.stringify({ enabledPlatforms: modalPlatforms, autoPost: modalAutoPost }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Erro ao salvar");
-            setPlatformConfig({ configured: true, enabledPlatforms: modalPlatforms, uploadPostUser: modalUsername.trim(), autoPost: modalAutoPost });
-            setModalSuccess("Salvo com sucesso! ✅");
+            setPlatformConfig(prev => ({ ...prev, enabledPlatforms: modalPlatforms, autoPost: modalAutoPost }));
+            setModalSuccess("Configurações salvas! ✅");
             setTimeout(() => setShowPlatformModal(false), 1000);
         } catch (err: any) {
             setModalError(err.message);
@@ -222,18 +240,54 @@ export default function DashboardPage() {
     const fetchPlatformStatus = async () => {
         try {
             const token = localStorage.getItem("clipstrike_token");
-            const res = await fetch(`${API_URL}/autopost/platforms`, {
+            // 1. Fetch Upload-Post status
+            const resAP = await fetch(`${API_URL}/autopost/platforms`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
-            const data = await res.json();
+            const dataAP = await resAP.json();
             setPlatformConfig({
-                configured: data.configured,
-                enabledPlatforms: data.enabledPlatforms || [],
-                uploadPostUser: data.uploadPostUser || "",
-                autoPost: data.autoPost !== false,
+                configured: dataAP.configured,
+                enabledPlatforms: dataAP.enabledPlatforms || [],
+                uploadPostUser: dataAP.uploadPostUser || "",
+                autoPost: dataAP.autoPost !== false,
+                realPlatforms: dataAP.realPlatforms || {}
             });
+
+            // 2. Fetch Direct Connections status
+            const resDirect = await fetch(`${API_URL}/platforms/status`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const dataDirect = await resDirect.json();
+            setDirectConnections(dataDirect || {});
+
         } catch (err) {
             console.error("Erro ao buscar status de plataformas:", err);
+        }
+    };
+
+    const handleConnectYouTube = () => {
+        const token = localStorage.getItem("clipstrike_token");
+        // We pass the token in URL if needed, but here we redirect to the backend route
+        // The backend route 'authenticate' middleware requires Bearer token, 
+        // but redirects don't carry headers. 
+        // WAIT: The user's provided backend code uses 'requireAuth' (authenticate).
+        // For a GET redirect, we might need a workaround if not using sessions.
+        // However, I'll follow the user's window.location.href suggestion.
+        window.location.href = `${API_URL}/platforms/youtube/connect?token=${token}`;
+        // Adjusted to pass token as query param so middleware can pick it up
+    };
+
+    const handleDisconnectPlatform = async (platform: string) => {
+        if (!confirm(`Deseja desconectar o ${platform}?`)) return;
+        try {
+            const token = localStorage.getItem("clipstrike_token");
+            await fetch(`${API_URL}/platforms/${platform}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            fetchPlatformStatus();
+        } catch (err) {
+            console.error("Erro ao desconectar:", err);
         }
     };
 
@@ -242,6 +296,22 @@ export default function DashboardPage() {
             setLoading(true);
             await Promise.all([fetchClips(), fetchChannels(), fetchPlatformStatus()]);
             setLoading(false);
+
+            // Check if returned from connection
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("connected") === "true") {
+                alert("Plataformas conectadas com sucesso! ✅");
+            } else if (params.get("connected") === "youtube") {
+                const channel = params.get("channel");
+                alert(`YouTube conectado: ${channel}! ✅`);
+            } else if (params.get("error")) {
+                alert("Erro na conexão: " + params.get("error"));
+            }
+
+            if (params.get("connected") || params.get("error")) {
+                const newUrl = window.location.pathname + window.location.hash;
+                window.history.replaceState({}, "", newUrl);
+            }
         };
         init();
 
@@ -505,16 +575,16 @@ export default function DashboardPage() {
                                     </div>
                                     <div className="flex gap-3 flex-shrink-0">
                                         <button
-                                            onClick={() => window.open("https://app.upload-post.com", "_blank")}
-                                            className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all"
+                                            onClick={handleConnectPlatforms}
+                                            className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all font-primary text-primary"
                                         >
-                                            Abrir Upload-Post ↗
+                                            Conectar Novas Contas ↗
                                         </button>
                                         <button
                                             onClick={openPlatformModal}
                                             className="px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all"
                                         >
-                                            {platformConfig.configured ? "Editar Configuração" : "Configurar Agora"}
+                                            {platformConfig.configured ? "Preferências de Auto-Post" : "Configurar Agora"}
                                         </button>
                                     </div>
                                 </div>
@@ -522,12 +592,15 @@ export default function DashboardPage() {
                                 {/* Platform grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {[
-                                        { id: "youtube", name: "YouTube Shorts", icon: Youtube },
+                                        { id: "youtube", name: "YouTube Shorts", icon: Youtube, direct: true },
                                         { id: "tiktok", name: "TikTok", icon: Music },
                                         { id: "instagram", name: "Instagram Reels", icon: Instagram },
                                         { id: "facebook", name: "Facebook", icon: Facebook },
                                     ].map(p => {
                                         const isEnabled = platformConfig.enabledPlatforms.includes(p.id);
+                                        const directConn = directConnections[p.id];
+                                        const isConnected = isEnabled || platformConfig.realPlatforms?.[p.id] || directConn?.connected;
+
                                         return (
                                             <div key={p.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-xl border-gradient-s flex flex-col group">
                                                 <div className="flex items-center justify-between mb-8">
@@ -537,22 +610,38 @@ export default function DashboardPage() {
                                                         </div>
                                                         <div>
                                                             <h4 className="text-xl font-bold">{p.name}</h4>
-                                                            <p className="text-white/40 text-xs mt-1">{isEnabled ? 'Publicação automática ativa' : 'Não configurado'}</p>
+                                                            <p className="text-white/40 text-xs mt-1">
+                                                                {directConn?.username ? `Logado como: ${directConn.username}` : (isEnabled ? 'Ativo via Upload-Post' : 'Não configurado')}
+                                                            </p>
                                                         </div>
                                                     </div>
-                                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isEnabled
+                                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isConnected
                                                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                                         : 'bg-white/5 text-white/30 border-white/10'
                                                         }`}>
-                                                        {isEnabled ? 'CONECTADO' : 'INATIVO'}
+                                                        {isConnected ? (p.direct && directConn?.connected ? 'ONLINE' : 'CONECTADO') : 'INATIVO'}
                                                     </div>
                                                 </div>
-                                                <button
-                                                    onClick={openPlatformModal}
-                                                    className="w-full py-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 font-bold text-xs transition-all uppercase tracking-[0.2em]"
-                                                >
-                                                    {isEnabled ? 'Editar Conexão' : 'Gerenciar Conexão'}
-                                                </button>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={p.id === 'youtube' ? handleConnectYouTube : (isConnected ? openPlatformModal : handleConnectPlatforms)}
+                                                        className={`flex-1 py-4 rounded-xl border font-bold text-xs transition-all uppercase tracking-[0.2em] ${isConnected
+                                                            ? "bg-white/5 border-white/5 hover:bg-white/10"
+                                                            : "bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
+                                                            }`}
+                                                    >
+                                                        {isConnected ? 'Gerenciar' : 'Conectar Agora'}
+                                                    </button>
+                                                    {p.direct && directConn?.connected && (
+                                                        <button
+                                                            onClick={() => handleDisconnectPlatform(p.id)}
+                                                            className="px-4 py-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all font-bold text-xs"
+                                                            title="Desconectar"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -631,16 +720,12 @@ export default function DashboardPage() {
                             {" "}faça login, conecte suas redes (TikTok, Instagram, etc.) e copie seu <strong className="text-white">username</strong>.
                         </div>
 
-                        {/* Username */}
+                        {/* Username (Read Only) */}
                         <div className="space-y-2 mb-6">
-                            <label className="text-xs font-bold uppercase tracking-widest text-white/40">Seu Username no Upload-Post</label>
-                            <input
-                                type="text"
-                                value={modalUsername}
-                                onChange={e => setModalUsername(e.target.value)}
-                                placeholder="ex: meu-usuario"
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-white/20"
-                            />
+                            <label className="text-xs font-bold uppercase tracking-widest text-white/40">Seu Perfil ClipStrike</label>
+                            <div className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white/40 select-none">
+                                {platformConfig.uploadPostUser || "Carregando..."}
+                            </div>
                         </div>
 
                         {/* Platform Checkboxes */}

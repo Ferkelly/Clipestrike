@@ -12,6 +12,7 @@ const clipRoutes = require('./routes/clips');
 const monitorRoutes = require('./routes/monitor');
 const autoPostRoutes = require('./routes/autoPost');
 const userRoutes = require('./routes/user');
+const platformRoutes = require('./routes/platform');
 
 const { startMonitorCron } = require('./jobs/monitorCron');
 
@@ -79,6 +80,7 @@ app.use('/api/videos', videoRoutes);
 app.use('/api/clips', clipRoutes);
 app.use('/api/monitor', monitorRoutes);
 app.use('/api/autopost', autoPostRoutes);
+app.use('/api/platforms', platformRoutes);
 app.use('/api/user', userRoutes);
 
 // Health check (Ambas as rotas para evitar erro 404)
