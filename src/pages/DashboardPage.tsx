@@ -99,11 +99,11 @@ export default function DashboardPage() {
     }, [location.pathname]);
 
     const setActiveTab = (tab: string) => {
-        if (tab === 'clips') navigate('/dashboard');
-        else if (tab === 'channels') navigate('/dashboard/canais');
-        else if (tab === 'platforms') navigate('/dashboard/plataformas');
-        else if (tab === 'runs') navigate('/dashboard/runs');
-        else navigate(`/dashboard/${tab}`);
+        if (tab === 'clips') navigate('/app/dashboard');
+        else if (tab === 'channels') navigate('/app/dashboard/canais');
+        else if (tab === 'platforms') navigate('/app/dashboard/plataformas');
+        else if (tab === 'runs') navigate('/app/dashboard/runs');
+        else navigate(`/app/dashboard/${tab}`);
     };
 
     const [url, setUrl] = useState("");

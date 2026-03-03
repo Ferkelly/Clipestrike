@@ -59,10 +59,41 @@ export function SignupPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-    const handleSignup = (e: React.FormEvent) => {
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
-        localStorage.setItem("clipstrike_token", "dummy_token");
-        navigate("/setup/channel");
+        setLoading(true);
+        setError("");
+
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/signup`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || "Erro ao criar conta");
+                return;
+            }
+
+            if (data.token) {
+                localStorage.setItem("clipstrike_token", data.token);
+                if (data.user) {
+                    localStorage.setItem("clipstrike_user", JSON.stringify(data.user));
+                }
+                navigate("/app/dashboard");
+            }
+        } catch (err) {
+            setError("Conexão perdida com o servidor.");
+            console.error("Signup error:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -97,11 +128,18 @@ export function SignupPage() {
                         />
                     </div>
 
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs py-3 px-4 rounded-xl mb-4 text-center font-bold">
+                            {error}
+                        </div>
+                    )}
+
                     <button
                         type="submit"
-                        className="w-full h-12 rounded-xl bg-primary text-white font-bold text-sm shadow-[0_0_20px_rgba(255,90,31,0.3)] hover:shadow-[0_0_30px_rgba(255,90,31,0.5)] hover:scale-[1.01] transition-all mt-6"
+                        disabled={loading}
+                        className="w-full h-12 rounded-xl bg-primary text-white font-bold text-sm shadow-[0_0_20px_rgba(255,90,31,0.3)] hover:shadow-[0_0_30_px_rgba(255,90,31,0.5)] hover:scale-[1.01] transition-all mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Criar Conta
+                        {loading ? "Criando..." : "Criar Conta"}
                     </button>
                 </form>
 
@@ -123,10 +161,41 @@ export function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-    const handleLogin = (e: React.FormEvent) => {
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        localStorage.setItem("clipstrike_token", "dummy_token");
-        navigate("/dashboard");
+        setLoading(true);
+        setError("");
+
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/signin`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || "Email ou senha incorretos");
+                return;
+            }
+
+            if (data.token) {
+                localStorage.setItem("clipstrike_token", data.token);
+                if (data.user) {
+                    localStorage.setItem("clipstrike_user", JSON.stringify(data.user));
+                }
+                navigate("/app/dashboard");
+            }
+        } catch (err) {
+            setError("Conexão perdida com o servidor.");
+            console.error("Login error:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -163,9 +232,10 @@ export function LoginPage() {
 
                     <button
                         type="submit"
-                        className="w-full h-12 rounded-xl bg-primary text-white font-bold text-sm shadow-[0_0_20px_rgba(255,90,31,0.3)] hover:shadow-[0_0_30px_rgba(255,90,31,0.5)] hover:scale-[1.01] transition-all mt-6"
+                        disabled={loading}
+                        className="w-full h-12 rounded-xl bg-primary text-white font-bold text-sm shadow-[0_0_20_px_rgba(255,90,31,0.3)] hover:shadow-[0_0_30_px_rgba(255,90,31,0.5)] hover:scale-[1.01] transition-all mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Entrar
+                        {loading ? "Entrando..." : "Entrar"}
                     </button>
                 </form>
 

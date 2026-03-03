@@ -56,7 +56,7 @@ export default function GooglePermissionsPage() {
                             Cancelar
                         </button>
                         <button
-                            onClick={() => navigate("/dashboard")}
+                            onClick={() => navigate("/app/dashboard")}
                             className="bg-blue-600 text-white font-medium text-sm px-8 py-2.5 rounded shadow-sm hover:bg-blue-700 transition-colors"
                         >
                             Continuar

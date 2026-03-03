@@ -13,16 +13,16 @@ function SetupLayout({ step, title, subtitle, children }: {
         <div className="min-h-screen bg-[#0B0F19] text-white font-sans flex flex-col relative overflow-hidden">
             {/* Background Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-red-600/10 rounded-full blur-[120px] opacity-30 mix-blend-screen" />
-                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-600/10 rounded-full blur-[100px] opacity-20 mix-blend-screen" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] opacity-30 mix-blend-screen" />
+                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] opacity-20 mix-blend-screen" />
             </div>
 
             <nav className="relative z-50 flex items-center justify-between px-8 h-20 border-b border-white/5 bg-black/20 backdrop-blur-md">
-                <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FF4D00] to-[#FF8C00] flex items-center justify-center shadow-[0_0_15px_rgba(255,77,0,0.5)]">
+                <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
+                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(255,90,31,0.5)]">
                         <Zap className="h-5 w-5 text-white" fill="currentColor" />
                     </div>
-                    <span className="font-display text-xl font-bold tracking-tight bg-gradient-to-r from-[#FF4D00] to-[#FF8C00] bg-clip-text text-transparent pt-1">
+                    <span className="font-bold tracking-tight text-primary pt-1">
                         CLIPSTRIKE
                     </span>
                 </div>
@@ -122,7 +122,7 @@ export function ConnectChannelPage() {
                     <div className="space-y-6">
                         <button
                             onClick={() => navigate("/auth/redirect")}
-                            className="w-full h-14 rounded-2xl bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold text-sm shadow-[0_0_20px_rgba(255,77,0,0.3)] hover:shadow-[0_0_30px_rgba(255,77,0,0.5)] hover:scale-[1.01] transition-all flex items-center justify-center gap-3 mb-4"
+                            className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-sm shadow-[0_0_20px_rgba(255,90,31,0.3)] hover:shadow-[0_0_30px_rgba(255,90,31,0.5)] hover:scale-[1.01] transition-all flex items-center justify-center gap-3 mb-4"
                         >
                             <Youtube className="w-5 h-5" /> Conectar com Google
                         </button>
@@ -188,7 +188,7 @@ export function ConnectChannelPage() {
 
                 <button
                     onClick={() => navigate("/app/plataformas")}
-                    className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#FF4D00] to-[#FF8C00] text-white font-bold text-sm shadow-[0_0_20px_rgba(255,77,0,0.2)] hover:shadow-[0_0_30px_rgba(255,77,0,0.4)] hover:scale-[1.01] transition-all"
+                    className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-sm shadow-[0_0_20px_rgba(255,90,31,0.2)] hover:shadow-[0_0_30px_rgba(255,90,31,0.4)] hover:scale-[1.01] transition-all"
                 >
                     Continuar para Configuração de Plataformas →
                 </button>

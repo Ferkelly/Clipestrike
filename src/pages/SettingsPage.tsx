@@ -212,7 +212,7 @@ export default function SettingsPage() {
         <div className="min-h-screen bg-[#0B0F19] text-white font-sans flex flex-col">
             <header className="h-20 border-b border-white/5 flex items-center justify-between px-10 sticky top-0 bg-[#0B0F19]/80 backdrop-blur-md z-30">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate("/dashboard")} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                    <button onClick={() => navigate("/app/dashboard")} className="p-2 hover:bg-white/5 rounded-full transition-colors">
                         <ArrowLeft className="h-5 w-5" />
                     </button>
                     <h2 className="text-2xl font-display uppercase tracking-wider">Configurações</h2>
