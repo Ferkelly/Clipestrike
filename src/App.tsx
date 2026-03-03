@@ -10,6 +10,7 @@ import { ConnectChannelPage } from "./pages/SetupPages";
 import SetupPlatformsPage from "./pages/SetupPlatformsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import NovoVideoPage from "./pages/NovoVideo";
 import { Zap } from "lucide-react";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -45,6 +46,7 @@ export default function App() {
         {/* Dashboard & Settings */}
         <Route path="/app/dashboard/configuracoes" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
         <Route path="/app/dashboard/analytics" element={<PrivateRoute><AnalyticsPage /></PrivateRoute>} />
+        <Route path="/app/dashboard/novo-video" element={<PrivateRoute><NovoVideoPage /></PrivateRoute>} />
         <Route path="/app/dashboard/*" element={
           <PrivateRoute><DashboardPage /></PrivateRoute>
         } />

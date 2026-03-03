@@ -566,6 +566,14 @@ export default function DashboardPage() {
                 </div>
 
                 <nav className="flex-1 px-4 space-y-2 mt-8">
+                    <button
+                        onClick={() => navigate("/app/dashboard/novo-video")}
+                        className="w-full flex items-center justify-center lg:justify-start gap-3 px-4 py-3.5 rounded-2xl transition-all group bg-gradient-to-r from-primary to-orange-600 text-white shadow-[0_4px_15px_rgba(255,90,31,0.3)] mb-4"
+                    >
+                        <Plus className="h-5 w-5 text-white" />
+                        <span className="hidden lg:block text-sm font-black uppercase tracking-widest">Novo Vídeo</span>
+                    </button>
+
                     {tabs.map(item => (
                         <button
                             key={item.id}
@@ -617,12 +625,19 @@ export default function DashboardPage() {
                             <RefreshCw className="w-5 h-5" />
                         </button>
                         <button
+                            onClick={() => navigate("/app/dashboard/novo-video")}
+                            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 transition-all text-white/60"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Novo Vídeo
+                        </button>
+                        <button
                             disabled={processing}
                             onClick={handleProcess}
                             className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100"
                         >
                             {processing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                            {processing ? "Processando..." : "Processar Agora"}
+                            {processing ? "Processando..." : "Processar Rápido"}
                         </button>
                     </div>
                 </header>

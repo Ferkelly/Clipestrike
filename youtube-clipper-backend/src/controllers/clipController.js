@@ -120,10 +120,25 @@ class ClipController {
 
     // Pipeline principal de execução (Background)
     async _runProcessingPipeline(videoId, video, io) {
+        return this.processVideoPipelineWithOptions(videoId, video, io, {
+            maxClips: 5,
+            minDuration: 30,
+            maxDuration: 60,
+            silenceCut: true,
+            dynamicZoom: true,
+            broll: false,
+            subtitles: true,
+            subtitleStyle: 'hormozi',
+            subtitleLang: 'pt',
+            autoPublish: false
+        });
+    }
+
+    // Pipeline com opções personalizadas
+    async processVideoPipelineWithOptions(videoId, video, io, options) {
         const fs = require('fs');
         const emitProgress = (step, percent, msg) => {
             console.log(`[Process] [${percent}%] ${msg}`);
-            // Emitir para o quarto do usuário para evitar vazamento global
             io?.to(video.user_id).emit('video-progress', {
                 id: videoId,
                 videoId,
@@ -135,31 +150,45 @@ class ClipController {
         };
 
         try {
-            // 1. Download do vídeo
-            emitProgress('DOWNLOAD', 10, 'Baixando vídeo do YouTube...');
-            const videoUrl = `https://youtube.com/watch?v=${video.youtube_video_id}`;
-            const downloadPath = path.join(__dirname, '../../uploads', `${videoId}.mp4`);
+            emitProgress('START', 5, "Iniciando processamento...");
 
-            if (!fs.existsSync(path.dirname(downloadPath))) {
-                fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
+            // 1. Download ou usar arquivo já uploaded
+            let downloadPath;
+            if (video.source === 'manual_upload' && video.url && fs.existsSync(video.url)) {
+                downloadPath = video.url;
+                emitProgress('UPLOAD', 15, "Arquivo local carregado ✅");
+            } else {
+                emitProgress('DOWNLOAD', 10, 'Baixando vídeo do YouTube...');
+                const videoUrl = video.url || `https://youtube.com/watch?v=${video.youtube_video_id}`;
+                downloadPath = path.join(__dirname, '../../uploads', `${videoId}.mp4`);
+
+                if (!fs.existsSync(path.dirname(downloadPath))) {
+                    fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
+                }
+                await youTubeService.downloadVideo(videoUrl, downloadPath);
+                emitProgress('DOWNLOAD', 20, "Download concluído ✅");
             }
-
-            await youTubeService.downloadVideo(videoUrl, downloadPath);
 
             // 2. Transcrever
             emitProgress('TRANSCRIPTION', 30, 'Transcrevendo áudio (IA)...');
             const audioPath = path.join(__dirname, '../../uploads', `${videoId}.mp3`);
 
             await ffmpegService.extractAudio(downloadPath, audioPath, (p) => {
-                emitProgress('TRANSCRIPTION', 10 + (p * 0.20), 'Extraindo áudio...');
+                emitProgress('TRANSCRIPTION', 20 + (p * 0.10), 'Extraindo áudio...');
             });
 
             const transcriptionData = await aiService.transcribeWithWords(audioPath);
             const transcription = transcriptionData.text;
 
-            // 3. Analisar momentos virais
+            // 3. Analisar momentos virais (com opções)
             emitProgress('AI', 50, 'Analisando momentos virais com IA...');
+            // Adaptar aiService para aceitar limites se necessário, ou filtrar aqui
             const analysis = await aiService.analyzeTranscription(transcription);
+
+            // Limitar número de clips
+            if (options.maxClips) {
+                analysis.clips = analysis.clips.slice(0, options.maxClips);
+            }
 
             // 4. Calcular enquadramento inteligente
             emitProgress('IA', 55, 'Calculando enquadramento inteligente...');
@@ -171,14 +200,10 @@ class ClipController {
             const clipsCount = analysis.clips.length;
             const createdClips = [];
 
-            emitProgress('CLIPPING', 75, `Gerando ${clipsCount} clips virais...`);
+            emitProgress('CLIPPING', 60, `Gerando ${clipsCount} clips virais...`);
 
             for (let i = 0; i < clipsCount; i++) {
-                const startPercent = 75 + (i / clipsCount) * 15;
                 const clipData = analysis.clips[i];
-
-                emitProgress('CLIPPING', startPercent, `Clip ${i + 1} de ${clipsCount}: ${clipData.title}`);
-
                 const startSeconds = this.timeToSeconds(clipData.start);
                 const endSeconds = this.timeToSeconds(clipData.end);
                 const duration = endSeconds - startSeconds;
@@ -196,7 +221,7 @@ class ClipController {
                 const assPath = path.join(__dirname, '../../uploads', `${videoId}_${i}.ass`);
                 subtitleGenerator.generateAss(clipWords, assPath);
 
-                // 1. Extração base (9:16 + Crop + Scale) - Sem legendas ainda
+                // 1. Extração base
                 const rawClipPath = await ffmpegService.extractVerticalClip(
                     downloadPath,
                     startSeconds,
@@ -205,29 +230,29 @@ class ClipController {
                     { xOffset: xOffset, subtitlesPath: null }
                 );
 
-                // 2. Edições Avançadas (Silêncio, Zoom, B-Roll)
-                emitProgress('ADVANCED_EDIT', 75 + (i / clipsCount) * 10, `Clip ${i + 1}: Aplicando edições avançadas...`);
+                // 2. Edições Avançadas (respeitando opções)
+                emitProgress('ADVANCED_EDIT', 65 + (i / clipsCount) * 20, `Clip ${i + 1}: Aplicando edições...`);
                 const editResult = await videoEditingService.applyAdvancedEditing(
                     rawClipPath,
                     duration,
-                    clipWords
-                );
-
-                // 3. Queimar Legendas no clip já editado
-                const finalClipPath = path.join(__dirname, '../../uploads', `${videoId}_${i}_final.mp4`);
-                await ffmpegService.addSubtitles(
-                    editResult.path,
-                    assPath,
-                    finalClipPath,
-                    (p) => {
-                        const stagePercent = (1 / clipsCount) * 5;
-                        const currentPercent = 85 + (i / clipsCount) * 5 + (p / 100) * stagePercent;
-                        emitProgress('SUBTITLES', currentPercent, `Clip ${i + 1}: Adicionando legendas...`);
+                    clipWords,
+                    {
+                        edit_silence_cut: options.silenceCut,
+                        edit_zoom: options.dynamicZoom,
+                        edit_broll: options.broll
                     }
                 );
 
+                // 3. Queimar Legendas
+                let finalProcessedPath = editResult.path;
+                if (options.subtitles) {
+                    const subtitledPath = path.join(__dirname, '../../uploads', `${videoId}_${i}_final.mp4`);
+                    await ffmpegService.addSubtitles(editResult.path, assPath, subtitledPath);
+                    finalProcessedPath = subtitledPath;
+                }
+
                 const fileName = `${videoId}_${i}_${Date.now()}.mp4`;
-                const fileBuffer = fs.readFileSync(finalClipPath);
+                const fileBuffer = fs.readFileSync(finalProcessedPath);
 
                 await db.uploadFile('clips', fileName, fileBuffer);
                 const publicUrl = await db.getPublicUrl('clips', fileName);
@@ -242,16 +267,17 @@ class ClipController {
                     file_url: publicUrl,
                     status: 'done',
                     hook: clipData.hook || '',
-                    reason: clipData.reason || ''
+                    reason: clipData.reason || '',
+                    edit_silence_cut: options.silenceCut,
+                    edit_zoom: options.dynamicZoom,
+                    edit_broll: options.broll
                 });
 
                 createdClips.push(clip);
 
-                // Limpeza de arquivos temporários do clip
-                [rawClipPath, finalClipPath, assPath, ...editResult.tempFiles].forEach(f => {
-                    if (f && fs.existsSync(f)) {
-                        try { fs.unlinkSync(f); } catch (_) { }
-                    }
+                // Limpeza
+                [rawClipPath, finalProcessedPath, assPath, ...editResult.tempFiles].forEach(f => {
+                    if (f && fs.existsSync(f)) try { fs.unlinkSync(f); } catch (_) { }
                 });
             }
 
@@ -261,14 +287,17 @@ class ClipController {
                 processed_at: new Date()
             });
 
-            if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+            if (video.source !== 'manual_upload') {
+                if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+            }
             if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
 
-            emitProgress('DONE', 100, 'Clips prontos! ✅');
-            io?.to(video.user_id).emit('video-progress', { id: videoId, videoId, status: 'done', clipsCount: createdClips.length, message: 'Processamento concluído!', percent: 100 });
+            emitProgress('DONE', 100, 'Tudo pronto! ✅');
 
             // Auto-postagem
-            autoPostService.autoPublishReadyClips(videoId, video.user_id).catch(console.error);
+            if (options.autoPublish) {
+                autoPostService.autoPublishReadyClips(videoId, video.user_id).catch(console.error);
+            }
 
         } catch (err) {
             console.error('[Pipeline Error]:', err);

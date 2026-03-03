@@ -97,6 +97,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/download', downloadRoutes);
+app.use('/api/videos', videoUploadRoutes);
 
 // Health check (Ambas as rotas para evitar erro 404)
 app.get('/health', (req, res) => {
