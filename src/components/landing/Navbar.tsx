@@ -21,8 +21,8 @@ export function Navbar() {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-          ? 'bg-[#080808]/90 backdrop-blur-md border-b border-primary/20 py-3'
-          : 'bg-transparent py-5'
+        ? 'bg-[#080808]/90 backdrop-blur-md border-b border-primary/20 py-3'
+        : 'bg-transparent py-5'
         }`}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
@@ -41,7 +41,7 @@ export function Navbar() {
 
         <div className="hidden md:flex items-center gap-4">
           <Link to="/login"><Button variant="ghost" className="text-sm hover:text-primary">Login</Button></Link>
-          <Link to="/login"><Button className="bg-gradient-primary text-white rounded-full px-6 hover:scale-105 transition-transform glow-effect border-0 shimmer-effect">Começar Grátis</Button></Link>
+          <Link to="/login"><Button className="bg-primary text-white rounded-full px-6 hover:scale-105 transition-transform glow-effect border-0 shimmer-effect">Começar Grátis</Button></Link>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -68,7 +68,7 @@ export function Navbar() {
               <a href="#pricing" className="text-lg font-medium" onClick={() => setIsMobileMenuOpen(false)}>Preços</a>
               <div className="h-px bg-white/10 my-2" />
               <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}><Button variant="outline" className="w-full justify-center border-white/10">Login</Button></Link>
-              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}><Button className="w-full justify-center bg-gradient-primary text-white rounded-full border-0 shimmer-effect">Começar Grátis</Button></Link>
+              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}><Button className="w-full justify-center bg-primary text-white rounded-full border-0 shimmer-effect">Começar Grátis</Button></Link>
             </div>
           </motion.div>
         )}

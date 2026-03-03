@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: easyslice
+      POSTGRES_PASSWORD: easyslice_password
+      POSTGRES_DB: easyslice_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: "postgresql://easyslice:easyslice_password@db:5432/easyslice_db?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      JWT_SECRET: "your_super_secret_jwt_token_change_it"
+      GOOGLE_CLIENT_ID: "your_google_client_id"
+      GOOGLE_CLIENT_SECRET: "your_google_client_secret"
+      GOOGLE_CALLBACK_URL: "http://localhost:5000/api/oauth/google/callback"
+      S3_ACCESS_KEY: "your_s3_access_key"
+      S3_SECRET_KEY: "your_s3_secret_key"
+      S3_BUCKET: "easyslice-clips"
+      WHOP_WEBHOOK_SECRET: "your_whop_secret"
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    build: .
+    command: [ "npm", "run", "worker" ]
+    environment:
+      DATABASE_URL: "postgresql://easyslice:easyslice_password@db:5432/easyslice_db?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      S3_ACCESS_KEY: "your_s3_access_key"
+      S3_SECRET_KEY: "your_s3_secret_key"
+      S3_BUCKET: "easyslice-clips"
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:

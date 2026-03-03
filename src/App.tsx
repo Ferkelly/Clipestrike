@@ -16,15 +16,15 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("clipstrike_token");
     setIsAuthenticated(!!token);
     setLoading(false);
   }, []);
 
   if (loading) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 text-primary">
-      <Zap className="h-12 w-12 animate-pulse" fill="currentColor" />
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-[#0B0F19] flex flex-col items-center justify-center gap-4 text-white">
+      <Zap className="h-12 w-12 text-[#FF4D00] animate-pulse" fill="currentColor" />
+      <div className="w-8 h-8 border-4 border-[#FF4D00] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -43,18 +43,17 @@ export default function App() {
         <Route path="/auth/google/accounts" element={<GoogleAccountSelectorPage />} />
         <Route path="/auth/google/permissions" element={<GooglePermissionsPage />} />
 
-        {/* Onboarding */}
-        <Route path="/setup/channel" element={
+        {/* App Onboarding Flow */}
+        <Route path="/app/canais" element={
           <PrivateRoute><ConnectChannelPage /></PrivateRoute>
         } />
-        <Route path="/setup/platforms" element={
+        <Route path="/app/plataformas" element={
           <PrivateRoute><SetupPlatformsPage /></PrivateRoute>
         } />
 
-        {/* App */}
-        <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
-        <Route path="/dashboard/configuracoes" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
-        <Route path="/dashboard/*" element={
+        {/* Dashboard & Settings */}
+        <Route path="/app/dashboard/configuracoes" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+        <Route path="/app/dashboard/*" element={
           <PrivateRoute><DashboardPage /></PrivateRoute>
         } />
 

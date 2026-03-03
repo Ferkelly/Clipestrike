@@ -18,8 +18,8 @@ export default function GoogleAccountSelectorPage() {
                     </svg>
                 </div>
 
-                <h1 className="text-2xl font-medium mb-2">Choose an account</h1>
-                <p className="text-gray-600 text-[15px] mb-8">To continue to <span className="text-blue-600 font-medium">EasySlice.AI</span></p>
+                <h1 className="text-2xl font-medium mb-2">Escolha uma conta</h1>
+                <p className="text-gray-600 text-[15px] mb-8">Para continuar para o <span className="text-blue-600 font-medium">ClipStrike</span></p>
 
                 <div className="w-full space-y-0 text-left border-t border-gray-200">
                     {accounts.map((acc, i) => (
@@ -44,19 +44,19 @@ export default function GoogleAccountSelectorPage() {
                             +
                         </div>
                         <div className="flex-1">
-                            <div className="font-medium text-[15px]">Use another account</div>
+                            <div className="font-medium text-[15px]">Usar outra conta</div>
                         </div>
                     </button>
                 </div>
 
                 <div className="w-full mt-10 text-[13px] text-gray-500 flex justify-between items-center px-2">
                     <div className="flex gap-4">
-                        <span className="hover:underline cursor-pointer">Help</span>
-                        <span className="hover:underline cursor-pointer">Privacy</span>
-                        <span className="hover:underline cursor-pointer">Terms</span>
+                        <span className="hover:underline cursor-pointer">Ajuda</span>
+                        <span className="hover:underline cursor-pointer">Privacidade</span>
+                        <span className="hover:underline cursor-pointer">Termos</span>
                     </div>
                     <div>
-                        <span className="hover:underline cursor-pointer font-medium">English (United States)</span>
+                        <span className="hover:underline cursor-pointer font-medium">Português (Brasil)</span>
                     </div>
                 </div>
             </div>

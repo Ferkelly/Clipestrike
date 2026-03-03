@@ -184,7 +184,7 @@ export function ProcessPage() {
                                                     <motion.div
                                                         initial={{ width: 0 }}
                                                         animate={{ width: `${progressPercent[video.id]}%` }}
-                                                        className="h-full bg-gradient-to-r from-primary to-orange-500"
+                                                        className="h-full bg-primary"
                                                     />
                                                 </div>
                                                 <span className="text-[10px] font-mono text-muted-foreground w-8">
@@ -207,7 +207,7 @@ export function ProcessPage() {
                                             <button
                                                 onClick={() => handleProcess(video)}
                                                 disabled={processingId === video.id}
-                                                className="flex items-center gap-1.5 bg-gradient-primary text-white rounded-full px-3 py-1.5 text-xs font-medium hover:scale-105 transition-transform border-0 disabled:opacity-60 disabled:scale-100"
+                                                className="flex items-center gap-1.5 bg-primary text-white rounded-full px-3 py-1.5 text-xs font-medium hover:scale-105 transition-transform border-0 disabled:opacity-60 disabled:scale-100"
                                             >
                                                 {processingId === video.id
                                                     ? <><Loader2 className="h-3 w-3 animate-spin" /> Processando</>

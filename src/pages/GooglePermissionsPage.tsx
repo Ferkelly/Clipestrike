@@ -15,7 +15,7 @@ export default function GooglePermissionsPage() {
                 </div>
 
                 <div className="text-center md:text-left">
-                    <h1 className="text-2xl font-medium mb-6 text-center">EasySlice.AI wants to access your Google Account</h1>
+                    <h1 className="text-2xl font-medium mb-6 text-center">O ClipStrike quer acessar sua Conta do Google</h1>
 
                     <div className="flex items-center gap-3 mb-8 p-3 bg-gray-50 rounded-lg">
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">JD</div>
@@ -23,13 +23,13 @@ export default function GooglePermissionsPage() {
                         <ChevronDown className="w-4 h-4 ml-auto text-gray-400" />
                     </div>
 
-                    <p className="text-[15px] font-medium mb-4">EasySlice.AI will be able to:</p>
+                    <p className="text-[15px] font-medium mb-4">O ClipStrike poderá:</p>
 
                     <div className="space-y-4 mb-8">
                         {[
-                            { title: "Manage your YouTube videos", desc: "Allows uploading and editing clips on your behalf." },
-                            { title: "View your YouTube account", desc: "Allows fetching channel information and metrics." },
-                            { title: "Access analytics data", desc: "Allows monitoring performance of generated clips." }
+                            { title: "Gerenciar seus vídeos do YouTube", desc: "Permite fazer upload e editar clipes em seu nome." },
+                            { title: "Visualizar sua conta do YouTube", desc: "Permite buscar informações e métricas do canal." },
+                            { title: "Acessar dados de analytics", desc: "Permite monitorar o desempenho dos clipes gerados." }
                         ].map((perm, i) => (
                             <div key={i} className="flex gap-4 items-start pb-4 border-b border-gray-100 last:border-0">
                                 <input type="checkbox" defaultChecked className="mt-1 w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
@@ -45,7 +45,7 @@ export default function GooglePermissionsPage() {
                     </div>
 
                     <div className="bg-gray-50 rounded-lg p-5 mb-10 text-xs text-gray-600 leading-relaxed">
-                        By continuing, you allow EasySlice.AI and Google to use your information in accordance with their respective <span className="text-blue-600 hover:underline cursor-pointer">Terms of Service</span> and <span className="text-blue-600 hover:underline cursor-pointer">Privacy Policy</span>.
+                        Ao continuar, você permite que o ClipStrike e o Google usem suas informações de acordo com seus respectivos <span className="text-blue-600 hover:underline cursor-pointer">Termos de Serviço</span> e <span className="text-blue-600 hover:underline cursor-pointer">Política de Privacidade</span>.
                     </div>
 
                     <div className="flex justify-between items-center">
@@ -53,13 +53,13 @@ export default function GooglePermissionsPage() {
                             onClick={() => navigate("/auth/google/accounts")}
                             className="text-blue-600 font-medium text-sm hover:bg-blue-50 px-4 py-2 rounded transition-colors"
                         >
-                            Cancel
+                            Cancelar
                         </button>
                         <button
                             onClick={() => navigate("/dashboard")}
                             className="bg-blue-600 text-white font-medium text-sm px-8 py-2.5 rounded shadow-sm hover:bg-blue-700 transition-colors"
                         >
-                            Continue
+                            Continuar
                         </button>
                     </div>
                 </div>

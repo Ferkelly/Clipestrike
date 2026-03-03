@@ -14,13 +14,13 @@ export function CTAFinal() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8 }}
-          className="relative rounded-[2.5rem] p-12 md:p-24 overflow-hidden text-center bg-gradient-to-br from-[#FF3B3B] to-[#FF7A00] shadow-2xl shadow-primary/30"
+          className="relative rounded-[2.5rem] p-12 md:p-24 overflow-hidden text-center bg-primary shadow-2xl shadow-primary/20"
         >
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-20 mix-blend-overlay" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-          
+
           <div className="relative z-10 flex flex-col items-center">
-            <motion.h2 
+            <motion.h2
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-100px" }}
@@ -35,10 +35,10 @@ export function CTAFinal() {
             <p className="font-sans text-xl md:text-2xl text-white/90 mb-12 max-w-3xl mx-auto leading-relaxed drop-shadow-sm">
               Configure em 2 minutos. Seus primeiros clips em menos de 1 hora.
             </p>
-            
-            <Button 
-              size="lg" 
-              className="h-16 px-10 rounded-full bg-white text-primary font-bold text-lg hover:scale-105 hover:bg-white/90 transition-all shadow-xl group border-0 shimmer-effect"
+
+            <Button
+              size="lg"
+              className="h-16 px-10 rounded-full bg-white text-primary font-bold text-lg hover:scale-105 hover:bg-white/95 transition-all shadow-xl group border-0"
             >
               Conectar Meu Canal Agora
               <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />

@@ -83,10 +83,10 @@ export default function DashboardPage() {
 
     // Tabs
     const tabs = [
-        { id: 'channels', label: 'Channels', icon: Youtube },
-        { id: 'platforms', label: 'Platforms', icon: Share2 },
-        { id: 'runs', label: 'Agent Runs', icon: PlayCircle },
-        { id: 'clips', label: 'My Clips', icon: Video },
+        { id: 'channels', label: 'Canais', icon: Youtube },
+        { id: 'platforms', label: 'Plataformas', icon: Share2 },
+        { id: 'runs', label: 'Execuções', icon: PlayCircle },
+        { id: 'clips', label: 'Meus Clipes', icon: Video },
     ];
 
     const activeTab = useMemo(() => {
@@ -219,11 +219,11 @@ export default function DashboardPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-[#0B0F19] flex flex-col items-center justify-center gap-6">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.4)] animate-pulse">
+                <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-[0_0_30px_rgba(255,90,31,0.4)] animate-pulse">
                     <Zap className="h-8 w-8 text-white" fill="currentColor" />
                 </div>
                 <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 animate-[loading-bar_2s_infinite_ease-in-out]" />
+                    <div className="h-full bg-primary animate-[loading-bar_2s_infinite_ease-in-out]" />
                 </div>
             </div>
         );
@@ -235,11 +235,11 @@ export default function DashboardPage() {
             <aside className="w-20 lg:w-64 border-r border-white/5 flex flex-col bg-black/20 backdrop-blur-3xl z-40">
                 <div className="p-6 flex justify-center lg:justify-start">
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+                        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(255,90,31,0.5)]">
                             <Zap className="h-5 w-5 text-white" fill="currentColor" />
                         </div>
-                        <span className="hidden lg:block font-bold tracking-tight bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 bg-clip-text text-transparent pt-0.5">
-                            EasySlice.AI
+                        <span className="hidden lg:block font-bold tracking-tight text-primary pt-0.5">
+                            CLIPSTRIKE
                         </span>
                     </div>
                 </div>
@@ -254,20 +254,20 @@ export default function DashboardPage() {
                                 : "text-white/40 hover:text-white hover:bg-white/5"
                                 }`}
                         >
-                            <item.icon className={`h-5 w-5 ${activeTab === item.id ? "text-purple-400" : "group-hover:text-purple-400 transition-colors"}`} />
+                            <item.icon className={`h-5 w-5 ${activeTab === item.id ? "text-primary" : "group-hover:text-primary transition-colors"}`} />
                             <span className="hidden lg:block text-sm font-bold">{item.label}</span>
                         </button>
                     ))}
                 </nav>
 
                 <div className="p-4 border-t border-white/5 space-y-2">
-                    <button onClick={() => navigate("/settings")} className="w-full flex items-center justify-center lg:justify-start gap-3 px-4 py-3.5 rounded-2xl text-white/40 hover:text-white hover:bg-white/5 transition-all">
+                    <button onClick={() => navigate("/app/dashboard/configuracoes")} className="w-full flex items-center justify-center lg:justify-start gap-3 px-4 py-3.5 rounded-2xl text-white/40 hover:text-white hover:bg-white/5 transition-all">
                         <Settings className="h-5 w-5" />
-                        <span className="hidden lg:block text-sm font-bold">Settings</span>
+                        <span className="hidden lg:block text-sm font-bold">Configurações</span>
                     </button>
                     <button onClick={() => { localStorage.clear(); navigate("/"); }} className="w-full flex items-center justify-center lg:justify-start gap-3 px-4 py-3.5 rounded-2xl text-red-500/60 hover:text-red-500 hover:bg-red-500/5 transition-all">
                         <LogOut className="h-5 w-5" />
-                        <span className="hidden lg:block text-sm font-bold">Log out</span>
+                        <span className="hidden lg:block text-sm font-bold">Sair</span>
                     </button>
                 </div>
             </aside>
@@ -277,22 +277,22 @@ export default function DashboardPage() {
                 {/* Header */}
                 <header className="sticky top-0 z-30 bg-[#0B0F19]/80 backdrop-blur-xl border-b border-white/5 px-8 flex items-center justify-between h-24">
                     <div className="fade-in">
-                        <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Your Dashboard</h2>
-                        <p className="text-sm text-white/40 font-medium">Monitor your channels and clips</p>
+                        <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Seu Painel</h2>
+                        <p className="text-sm text-white/40 font-medium">Monitore seus canais e clipes</p>
                     </div>
 
                     <div className="flex items-center gap-3 fade-in">
                         <button onClick={() => window.location.reload()} className="p-3 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60">
                             <RefreshCw className="w-5 h-5" />
                         </button>
-                        <button onClick={() => navigate("/setup/platforms")} className="hidden md:flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold shadow-[0_4px_15px_rgba(168,85,247,0.3)] hover:scale-[1.02] transition-all">
-                            <Share2 className="w-4 h-4" /> Connect Platforms
+                        <button onClick={() => navigate("/app/plataformas")} className="hidden md:flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all">
+                            <Share2 className="w-4 h-4" /> Conectar Plataformas
                         </button>
-                        <button onClick={handleProcess} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-yellow-500 text-white text-xs font-bold shadow-[0_4px_15px_rgba(236,72,153,0.3)] hover:scale-[1.02] transition-all">
-                            <Plus className="w-4 h-4" /> Add Video
+                        <button onClick={handleProcess} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all">
+                            <Plus className="w-4 h-4" /> Adicionar Vídeo
                         </button>
-                        <button className="hidden lg:flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-500 to-blue-500 text-white text-xs font-bold shadow-[0_4px_15px_rgba(79,70,229,0.3)] hover:scale-[1.02] transition-all">
-                            <CreditCard className="w-4 h-4" /> Renew Subscription
+                        <button className="hidden lg:flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all">
+                            <CreditCard className="w-4 h-4" /> Renovar Assinatura
                         </button>
                     </div>
                 </header>
@@ -300,9 +300,9 @@ export default function DashboardPage() {
                 <div className="p-8 lg:p-12 space-y-12">
                     {/* Stats */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in">
-                        <StatCard label="Connected Channels" value={channels.length.toString()} icon={Youtube} color="red" />
-                        <StatCard label="Platforms Connected" value={platformConfig.enabledPlatforms.length.toString()} icon={Share2} color="purple" />
-                        <StatCard label="Active Runs" value={runs.filter(r => r.percent < 100).length.toString()} icon={PlayCircle} color="pink" />
+                        <StatCard label="Canais Conectados" value={channels.length.toString()} icon={Youtube} color="primary" />
+                        <StatCard label="Plataformas Conectadas" value={platformConfig.enabledPlatforms.length.toString()} icon={Share2} color="primary" />
+                        <StatCard label="Execuções Ativas" value={runs.filter(r => r.percent < 100).length.toString()} icon={PlayCircle} color="primary" />
                     </div>
 
                     {/* Tabs / Content Section */}
@@ -313,11 +313,11 @@ export default function DashboardPage() {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id
-                                            ? "bg-white/10 text-white shadow-md"
-                                            : "text-white/30 hover:text-white"
+                                        ? "bg-white/10 text-white shadow-md"
+                                        : "text-white/30 hover:text-white"
                                         }`}
                                 >
-                                    <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? "text-purple-400" : ""}`} />
+                                    <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? "text-primary" : ""}`} />
                                     {tab.label}
                                 </button>
                             ))}
@@ -340,23 +340,23 @@ export default function DashboardPage() {
 
                                             <div className="flex-1 min-w-0 py-2">
                                                 <div className="flex items-center gap-3 mb-2">
-                                                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md">
+                                                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-md">
                                                         Viral Score: {clip.viral_score}%
                                                     </span>
                                                     <span className={`text-[10px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded-md ${clip.status === 'done' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
                                                         }`}>
-                                                        {clip.status}
+                                                        {clip.status === 'done' ? 'Concluído' : clip.status === 'processing' ? 'Processando' : clip.status === 'pending' ? 'Pendente' : 'Erro'}
                                                     </span>
                                                 </div>
-                                                <h3 className="text-lg font-bold truncate group-hover:text-purple-400 transition-colors">{clip.title}</h3>
+                                                <h3 className="text-lg font-bold truncate group-hover:text-primary transition-colors">{clip.title}</h3>
                                                 <div className="flex items-center gap-4 mt-3 text-white/40 text-xs font-medium">
-                                                    <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Posted by {clip.channel_name || 'Manual'}</div>
+                                                    <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Postado por {clip.channel_name || 'Manual'}</div>
                                                     <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {new Date(clip.created_at).toLocaleDateString()}</div>
                                                 </div>
                                             </div>
 
                                             <div className="flex items-center gap-3 ml-auto px-4">
-                                                <button onClick={() => window.open(clip.file_url, '_blank')} className="p-3 bg-white/5 border border-white/10 rounded-xl hover:text-purple-400 transition-all">
+                                                <button onClick={() => window.open(clip.file_url, '_blank')} className="p-3 bg-white/5 border border-white/10 rounded-xl hover:text-primary transition-all">
                                                     <Download className="w-5 h-5" />
                                                 </button>
                                                 <button className="p-3 bg-white/5 border border-white/10 rounded-xl hover:text-white transition-all">
@@ -370,8 +370,8 @@ export default function DashboardPage() {
                                         <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center mx-auto mb-6">
                                             <Video className="w-10 h-10 text-white/20" />
                                         </div>
-                                        <h4 className="text-xl font-bold mb-2 text-white/80">No clips found</h4>
-                                        <p className="text-white/40 max-w-sm mx-auto">Start by adding a YouTube video to generate your first set of social-ready highlight clips.</p>
+                                        <h4 className="text-xl font-bold mb-2 text-white/80">Nenhum clipe encontrado</h4>
+                                        <p className="text-white/40 max-w-sm mx-auto">Comece adicionando um vídeo do YouTube para gerar seu primeiro conjunto de clipes de destaque.</p>
                                     </div>
                                 )}
                             </div>
@@ -388,7 +388,7 @@ export default function DashboardPage() {
                                             <h4 className="font-bold truncate">{ch.name || ch.title}</h4>
                                             <div className="flex items-center gap-2 mt-1.5 font-bold">
                                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                <span className="text-[10px] uppercase tracking-wider text-emerald-500">Connected</span>
+                                                <span className="text-[10px] uppercase tracking-wider text-emerald-500">Conectado</span>
                                             </div>
                                         </div>
                                     </div>
@@ -414,14 +414,14 @@ export default function DashboardPage() {
                                                     </div>
                                                     <div>
                                                         <h4 className="text-xl font-bold">{p.name}</h4>
-                                                        <p className="text-white/40 text-xs mt-1">Status: {isEnabled ? 'Active' : 'Not Connected'}</p>
+                                                        <p className="text-white/40 text-xs mt-1">Status: {isEnabled ? 'Ativo' : 'Não Conectado'}</p>
                                                     </div>
                                                 </div>
                                                 <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isEnabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-white/40'}`}>
-                                                    {isEnabled ? 'Live' : 'Inactive'}
+                                                    {isEnabled ? 'Online' : 'Inativo'}
                                                 </div>
                                             </div>
-                                            <button className="w-full py-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 font-bold text-xs transition-all uppercase tracking-[0.2em]">Manage Connection</button>
+                                            <button className="w-full py-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 font-bold text-xs transition-all uppercase tracking-[0.2em]">Gerenciar Conexão</button>
                                         </div>
                                     );
                                 })}
@@ -434,25 +434,25 @@ export default function DashboardPage() {
                                     <div key={run.id} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-xl border-gradient-s">
                                         <div className="flex items-center justify-between mb-6">
                                             <div className="flex items-center gap-5">
-                                                <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center">
-                                                    <PlayCircle className="w-7 h-7 text-purple-400 animate-pulse" />
+                                                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                                                    <PlayCircle className="w-7 h-7 text-primary animate-pulse" />
                                                 </div>
                                                 <div>
-                                                    <h4 className="text-lg font-bold">{run.title || 'Agent Processing Video...'}</h4>
+                                                    <h4 className="text-lg font-bold">{run.title || 'Agente Processando Vídeo...'}</h4>
                                                     <p className="text-white/40 text-sm mt-1">{run.message}</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-3xl font-bold text-purple-400">{run.percent}%</div>
+                                                <div className="text-3xl font-bold text-primary">{run.percent}%</div>
                                                 <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/20">{run.step}</div>
                                             </div>
                                         </div>
                                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                                            <div className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 transition-all duration-700 ease-out" style={{ width: `${run.percent}%` }} />
+                                            <div className="h-full bg-primary transition-all duration-700 ease-out" style={{ width: `${run.percent}%` }} />
                                         </div>
                                     </div>
                                 ))}
-                                {runs.length === 0 && <div className="py-20 text-center text-white/20 font-bold uppercase tracking-widest bg-white/[0.01] rounded-[40px] border border-dashed border-white/5">No active runs</div>}
+                                {runs.length === 0 && <div className="py-20 text-center text-white/20 font-bold uppercase tracking-widest bg-white/[0.01] rounded-[40px] border border-dashed border-white/5">Nenhuma execução ativa</div>}
                             </div>
                         )}
                     </div>

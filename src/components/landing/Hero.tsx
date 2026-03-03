@@ -26,7 +26,7 @@ export function Hero() {
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[120px] opacity-50 mix-blend-screen" />
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent/20 rounded-full blur-[100px] opacity-30 mix-blend-screen" />
-        
+
         {/* Particles */}
         {Array.from({ length: 20 }).map((_, i) => (
           <div
@@ -47,9 +47,9 @@ export function Hero() {
         <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FF3B3B" stopOpacity="0" />
-              <stop offset="50%" stopColor="#FF7A00" stopOpacity="1" />
-              <stop offset="100%" stopColor="#FFD600" stopOpacity="0" />
+              <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0" />
+              <stop offset="50%" stopColor="var(--color-accent)" stopOpacity="1" />
+              <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0" />
             </linearGradient>
           </defs>
           <motion.path
@@ -90,7 +90,7 @@ export function Hero() {
           transition={{ duration: 0.5 }}
           className="relative inline-flex items-center justify-center rounded-full p-[1px] mb-8 overflow-hidden group"
         >
-          <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#080808_0%,#FF3B3B_50%,#FF7A00_100%)]" />
+          <span className="absolute inset-[-1000%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,var(--color-primary)_50%,transparent_100%)]" />
           <div className="inline-flex items-center justify-center w-full px-4 py-1.5 text-xs font-mono rounded-full bg-background/90 backdrop-blur-xl text-foreground/90 uppercase tracking-wider">
             <span className="text-primary mr-2">✦</span> NOVO — Automação Total de Clips com IA
           </div>
@@ -171,7 +171,7 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.8 }}
           className="flex flex-col sm:flex-row items-center gap-4 mb-12"
         >
-          <Button size="lg" className="h-14 px-8 rounded-full bg-gradient-primary text-white text-lg font-medium hover:scale-105 transition-transform glow-effect border-0 w-full sm:w-auto hover:shadow-[0_0_30px_rgba(255,59,59,0.5)]">
+          <Button size="lg" className="h-14 px-8 rounded-full bg-primary text-white text-lg font-medium hover:scale-105 transition-transform glow-effect border-0 w-full sm:w-auto hover:shadow-[0_0_30px_rgba(255,90,31,0.4)]">
             Conectar Meu Canal
           </Button>
           <Button size="lg" variant="outline" className="h-14 px-8 rounded-full border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 hover:text-white transition-all group w-full sm:w-auto hover:scale-105">

@@ -55,7 +55,7 @@ export function Pricing() {
     <section id="pricing" className="py-24 bg-background relative">
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-16">
-          <motion.h2 
+          <motion.h2
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
@@ -67,7 +67,7 @@ export function Pricing() {
           >
             SIMPLES E TRANSPARENTE
           </motion.h2>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
@@ -86,14 +86,13 @@ export function Pricing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.5, delay: idx * 0.1 }}
-              className={`relative rounded-3xl p-8 flex flex-col ${
-                plan.highlight 
-                  ? 'border-gradient shadow-2xl shadow-primary/20 scale-105 z-10' 
-                  : 'glass-card border border-white/10'
-              }`}
+              className={`relative rounded-3xl p-8 flex flex-col ${plan.highlight
+                ? 'border-gradient shadow-2xl shadow-primary/20 scale-105 z-10'
+                : 'glass-card border border-white/10'
+                }`}
             >
               {plan.badge && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-primary text-white font-mono text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white font-mono text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest">
                   {plan.badge}
                 </div>
               )}
@@ -113,12 +112,11 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <Button 
-                className={`w-full h-12 rounded-full font-medium transition-all ${
-                  plan.highlight 
-                    ? 'bg-gradient-primary text-white hover:scale-105 glow-effect border-0' 
-                    : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
-                }`}
+              <Button
+                className={`w-full h-12 rounded-full font-medium transition-all ${plan.highlight
+                  ? 'bg-primary text-white hover:scale-105 shadow-[0_0_30px_rgba(255,90,31,0.4)] border-0'
+                  : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+                  }`}
               >
                 {plan.cta}
               </Button>

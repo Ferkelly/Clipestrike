@@ -195,8 +195,8 @@ export default function SettingsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#080808] flex items-center justify-center">
-                <Zap className="h-10 w-10 text-primary animate-pulse" fill="currentColor" />
+            <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
+                <Zap className="h-10 w-10 text-red-500 animate-pulse" fill="currentColor" />
             </div>
         );
     }
@@ -209,8 +209,8 @@ export default function SettingsPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-[#080808] text-foreground font-sans flex flex-col">
-            <header className="h-20 border-b border-white/5 flex items-center justify-between px-10 sticky top-0 bg-[#080808]/80 backdrop-blur-md z-30">
+        <div className="min-h-screen bg-[#0B0F19] text-white font-sans flex flex-col">
+            <header className="h-20 border-b border-white/5 flex items-center justify-between px-10 sticky top-0 bg-[#0B0F19]/80 backdrop-blur-md z-30">
                 <div className="flex items-center gap-4">
                     <button onClick={() => navigate("/dashboard")} className="p-2 hover:bg-white/5 rounded-full transition-colors">
                         <ArrowLeft className="h-5 w-5" />
@@ -218,8 +218,8 @@ export default function SettingsPage() {
                     <h2 className="text-2xl font-display uppercase tracking-wider">Configurações</h2>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-primary p-[1px]">
-                        <div className="w-full h-full rounded-full bg-[#080808] flex items-center justify-center font-bold text-xs uppercase">
+                    <div className="w-10 h-10 rounded-full bg-primary p-[1px]">
+                        <div className="w-full h-full rounded-full bg-[#0B0F19] flex items-center justify-center font-bold text-xs uppercase text-white">
                             {profile?.name?.charAt(0) || "U"}
                         </div>
                     </div>
@@ -233,7 +233,7 @@ export default function SettingsPage() {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === tab.id ? "bg-primary text-white shadow-lg" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === tab.id ? "bg-primary text-white shadow-lg" : "text-white/40 hover:text-white hover:bg-white/5"
                                 }`}
                         >
                             <tab.icon className="h-4 w-4" />
@@ -254,7 +254,7 @@ export default function SettingsPage() {
                                         type="text"
                                         value={name}
                                         onChange={e => setName(e.target.value)}
-                                        className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50"
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-500/50"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -273,7 +273,7 @@ export default function SettingsPage() {
                                 <Button
                                     onClick={handleSaveProfile}
                                     disabled={saving}
-                                    className="bg-primary text-white px-8 h-12 rounded-xl font-bold mt-4"
+                                    className="bg-primary text-white px-8 h-12 rounded-xl font-bold mt-4 shadow-lg shadow-primary/20"
                                 >
                                     {saving ? "Salvando..." : "Salvar Alterações"}
                                 </Button>
@@ -290,9 +290,9 @@ export default function SettingsPage() {
                                         <h3 className="text-xl font-display mb-2">Assinatura Atual</h3>
                                         <p className="text-muted-foreground text-sm">Você está no plano de iniciante do ClipStrike.</p>
                                     </div>
-                                    <div className={`px-4 py-2 rounded-full font-mono text-[10px] font-bold tracking-widest ${profile?.plan === 'pro' ? 'bg-primary/20 text-primary border border-primary/50' : 'bg-white/10 text-white border border-white/10'
+                                    <div className={`px-4 py-2 rounded-full font-mono text-[10px] font-bold tracking-widest ${profile?.plan === 'pro' ? 'bg-red-500/20 text-red-500 border border-red-500/50' : 'bg-white/10 text-white border border-white/10'
                                         }`}>
-                                        {profile?.plan?.toUpperCase() || "FREE"} {profile?.plan === 'pro' ? "⚡" : ""}
+                                        {profile?.plan?.toUpperCase() || "GRATUITO"} {profile?.plan === 'pro' ? "⚡" : ""}
                                     </div>
                                 </div>
 
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                                                     type="password"
                                                     value={newPassword}
                                                     onChange={e => setNewPassword(e.target.value)}
-                                                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-500/50"
                                                 />
                                             </div>
                                             <div className="space-y-2">
@@ -394,7 +394,7 @@ export default function SettingsPage() {
                                                     type="password"
                                                     value={confirmPassword}
                                                     onChange={e => setConfirmPassword(e.target.value)}
-                                                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-500/50"
                                                 />
                                             </div>
                                         </div>

@@ -1,5 +1,17 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
+// ─── Design Tokens ──────────────────────────────────────────────────────────
+const COLORS = {
+    primary: "#FF5A1F",
+    accent: "#FF7A2F",
+    bg: "#0B0B0F",
+    bgSecondary: "#111114",
+    text: "#FFFFFF",
+    muted: "#A1A1AA",
+    border: "rgba(255, 255, 255, 0.08)",
+    glass: "rgba(255, 255, 255, 0.02)",
+};
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 const Icon = {
@@ -9,8 +21,8 @@ const Icon = {
     YouTube: () => (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6a3 3 0 0 0-2.1 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z" /></svg>
     ),
-    Eye: () => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+    Search: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
     ),
     Scissors: () => (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" /><line x1="8.12" y1="8.12" x2="12" y2="12" /></svg>
@@ -18,280 +30,200 @@ const Icon = {
     Share: () => (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>
     ),
-    DollarSign: () => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-    ),
     Check: () => (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
     ),
     X: () => (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-    ),
-    Clock: () => (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-    ),
-    User: () => (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-    ),
-    Menu: () => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
     ),
 };
 
-// ─── Animated Wave ─────────────────────────────────────────────────────────
-function AnimatedWave() {
-    return (
-        <div style={{ width: "100%", overflow: "hidden", lineHeight: 0, marginTop: "-2px" }}>
-            <svg viewBox="0 0 1440 60" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: "60px" }}>
-                <defs>
-                    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#a855f7" stopOpacity="0.6" />
-                        <stop offset="40%" stopColor="#ec4899" stopOpacity="0.5" />
-                        <stop offset="100%" stopColor="#eab308" stopOpacity="0.4" />
-                    </linearGradient>
-                </defs>
-                <path fill="url(#waveGrad)" d="M0,30 C240,60 480,0 720,30 C960,60 1200,0 1440,30 L1440,60 L0,60 Z" style={{ animation: "waveAnim 6s ease-in-out infinite alternate" }} />
-            </svg>
-            <style>{`@keyframes waveAnim { from { d: path('M0,30 C240,60 480,0 720,30 C960,60 1200,0 1440,30 L1440,60 L0,60 Z'); } to { d: path('M0,20 C240,50 480,10 720,40 C960,10 1200,50 1440,20 L1440,60 L0,60 Z'); } }`}</style>
-        </div>
-    );
-}
-
-// ─── Logo Component ─────────────────────────────────────────────────────────
+// ─── Components ─────────────────────────────────────────────────────────────
 function Logo({ size = 24 }: { size?: number }) {
     return (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{
                 width: size + 8, height: size + 8,
-                background: "linear-gradient(135deg, #a855f7, #ec4899, #eab308)",
-                borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 0 16px rgba(168,85,247,0.5)"
+                backgroundColor: COLORS.primary,
+                borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: `0 0 20px ${COLORS.primary}4D`
             }}>
-                <svg width={size - 2} height={size - 2} viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2">
+                <svg width={size - 2} height={size - 2} viewBox="0 0 24 24" fill="white">
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                 </svg>
             </div>
             <span style={{
-                fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: size === 24 ? 20 : 16,
-                background: "linear-gradient(90deg, #a855f7, #ec4899, #eab308)",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: "-0.5px"
-            }}>EasySlice.AI</span>
+                fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: size === 24 ? 22 : 18,
+                letterSpacing: "-0.5px", color: COLORS.text, textTransform: "uppercase"
+            }}>CLIPSTRIKE</span>
         </div>
     );
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
 export default function LandingPage() {
     const navigate = useNavigate();
-    const [menuOpen, setMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 30);
+        const onScroll = () => setScrolled(window.scrollY > 50);
         window.addEventListener("scroll", onScroll);
         return () => window.removeEventListener("scroll", onScroll);
     }, []);
 
-    const scrollTo = (id: string) => {
-        document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-        setMenuOpen(false);
-    };
+    const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
     const steps = [
-        { icon: <Icon.YouTube />, color: "#ff4444", title: "Connect Channel", desc: "Paste your YouTube channel URL. EasySlice monitors it 24/7 automatically." },
-        { icon: <Icon.Eye />, color: "#a855f7", title: "Detect Uploads", desc: "The moment a new video is published, our AI engine gets to work instantly." },
-        { icon: <Icon.Scissors />, color: "#ec4899", title: "Auto-Clip AI", desc: "AI analyzes every second — finding viral hooks, punchlines and highlights." },
-        { icon: <Icon.Share />, color: "#06b6d4", title: "Auto-Post", desc: "Clips are formatted for each platform and scheduled or posted automatically." },
-        { icon: <Icon.DollarSign />, color: "#eab308", title: "Earn Money", desc: "Monetize clips via Whop. Your audience grows while you sleep.", badge: "NEW" },
+        { title: "Conecte Canal", desc: "Vincule sua conta do YouTube com um clique via OAuth seguro.", icon: <Icon.YouTube /> },
+        { title: "Detecta Uploads", desc: "Monitoramos seu canal 24/7. Postou algo novo? Nós começamos.", icon: <Icon.Search /> },
+        { title: "IA Encontra Momentos", desc: "Nossa IA analisa o conteúdo e identifica onde está o engajamento.", icon: <Icon.Bolt /> },
+        { title: "Cria Clip Vertical", desc: "Corte automático em 9:16 com legendas dinâmicas inclusas.", icon: <Icon.Scissors /> },
+        { title: "Publica Automático", desc: "Envia direto para TikTok, Instagram Reels e YouTube Shorts.", icon: <Icon.Share /> },
     ];
 
-    const comparisonRows = [
-        { label: "Time Investment", easy: "Zero — fully automated", manual: "4–8 hours per video", icon: <Icon.Clock /> },
-        { label: "Consistency", easy: "Every upload, every time", manual: "Only when you have time", icon: <Icon.Check /> },
-        { label: "AI Analysis", easy: "Smart viral detection", manual: "Guesswork & intuition", icon: <Icon.Bolt /> },
-        { label: "Multi-Platform", easy: "All platforms at once", manual: "One platform at a time", icon: <Icon.Share /> },
+    const comparison = [
+        { feature: "Tempo por vídeo", strike: "2 minutos", manual: "2+ horas" },
+        { feature: "Esforço de Edição", strike: "Zero (IA)", manual: "Manual Intenso" },
+        { feature: "Consistência de Postagem", strike: "100%", manual: "Variável" },
+        { feature: "Multi-Plataforma", strike: "Automático", manual: "Manual e Lento" },
+        { feature: "Custo por Clip", strike: "Centavos", manual: "R$ 50 - R$ 200" },
     ];
 
     return (
-        <div style={{ minHeight: "100vh", background: "#0B0F19", color: "#fff", fontFamily: "'Inter', sans-serif", overflowX: "hidden" }}>
+        <div style={{ minHeight: "100vh", backgroundColor: COLORS.bg, color: COLORS.text, fontFamily: "'Inter', sans-serif", overflowX: "hidden" }}>
             <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::selection { background: rgba(168,85,247,0.3); }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0B0F19; } ::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 3px; }
-        .nav-link { color: rgba(255,255,255,0.65); font-size: 14px; font-weight: 500; cursor: pointer; transition: color 0.2s; text-decoration: none; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: ${COLORS.bg}; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: ${COLORS.primary}; }
+        
+        .hero-glow {
+          position: absolute; top: 15%; left: 50%; transform: translate(-50%, -50%);
+          width: 600px; height: 400px;
+          background: radial-gradient(circle, ${COLORS.primary}1A 0%, transparent 70%);
+          filter: blur(80px); pointer-events: none; z-index: 0;
+        }
+
+        .cta-btn {
+          background: ${COLORS.primary}; color: #fff; border: none; padding: 18px 40px;
+          font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.3s;
+          text-transform: uppercase; letter-spacing: 0.5px; font-size: 16px;
+        }
+        .cta-btn:hover { background: ${COLORS.accent}; transform: translateY(-2px); box-shadow: 0 10px 20px ${COLORS.primary}33; }
+
+        .outline-btn {
+          background: transparent; color: #fff; border: 1px solid ${COLORS.border}; padding: 18px 40px;
+          font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.3s;
+          text-transform: uppercase; letter-spacing: 0.5px; font-size: 16px;
+        }
+        .outline-btn:hover { background: rgba(255,255,255,0.05); border-color: ${COLORS.muted}; }
+
+        .nav-link { color: ${COLORS.muted}; text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; cursor: pointer; }
         .nav-link:hover { color: #fff; }
-        .glass { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); }
-        .glow-btn { background: linear-gradient(90deg, #a855f7, #ec4899, #eab308); border: none; cursor: pointer; color: #fff; font-weight: 700; border-radius: 12px; transition: all 0.3s; position: relative; overflow: hidden; }
-        .glow-btn:hover { transform: translateY(-2px); box-shadow: 0 0 32px rgba(168,85,247,0.5); }
-        .glow-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #a855f7, #ec4899, #eab308); opacity: 0; transition: opacity 0.3s; }
-        .step-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 28px; transition: all 0.3s; cursor: default; }
-        .step-card:hover { background: rgba(255,255,255,0.07); border-color: rgba(168,85,247,0.3); transform: translateY(-4px); }
-        .fade-in { animation: fadeIn 0.8s ease both; }
+
+        .card {
+          background: ${COLORS.bgSecondary}; border: 1px solid ${COLORS.border};
+          padding: 32px; border-radius: 16px; transition: border-color 0.3s;
+        }
+        .card:hover { border-color: ${COLORS.primary}4D; }
+
+        .condensed { letter-spacing: -2px; line-height: 0.95; }
+        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(168,85,247,0.4); } 50% { box-shadow: 0 0 0 12px rgba(168,85,247,0); } }
-        .pulse { animation: pulse 2.5s infinite; }
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
       `}</style>
 
             {/* ── Navbar ─────────────────────────────────────────────────── */}
             <nav style={{
-                position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-                padding: "0 40px", height: 68,
+                position: "fixed", top: 0, left: 0, right: 0, height: 80, zIndex: 100,
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                background: scrolled ? "rgba(11,15,25,0.92)" : "transparent",
+                padding: "0 60px", backgroundColor: scrolled ? "rgba(11, 11, 15, 0.9)" : "transparent",
                 backdropFilter: scrolled ? "blur(20px)" : "none",
-                borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
+                borderBottom: scrolled ? `1px solid ${COLORS.border}` : "none",
                 transition: "all 0.3s"
             }}>
                 <Logo />
-                {/* Desktop Links */}
-                <div style={{ display: "flex", gap: 36, alignItems: "center" }} className="desktop-nav">
-                    {["Features", "How it Works", "Monetize with Whop", "Contact"].map((item, i) => (
-                        <span key={i} className="nav-link" onClick={() => scrollTo(["features", "how-it-works", "monetize", "contact"][i])}>
-                            {item}
-                        </span>
+
+                <div style={{ display: "flex", gap: 32, alignItems: "center" }}>
+                    {["Funcionalidades", "Como Funciona", "Preços", "GitHub"].map(link => (
+                        <span key={link} className="nav-link" onClick={() => link === "GitHub" ? window.open("https://github.com/Ferkelly/Clipestrike", "_blank") : scrollTo(link.toLowerCase().replace(/ /g, '-'))}>{link}</span>
                     ))}
                 </div>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <button
-                        onClick={() => navigate("/login")}
-                        style={{
-                            width: 40, height: 40, borderRadius: "50%",
-                            background: "linear-gradient(135deg, #a855f7, #ec4899)",
-                            border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                            boxShadow: "0 0 12px rgba(168,85,247,0.4)"
-                        }}
-                        className="pulse"
-                        title="Login"
-                    >
-                        <Icon.User />
-                    </button>
-                    <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", display: "none" }} id="hamburger">
-                        <Icon.Menu />
-                    </button>
+
+                <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+                    <span className="nav-link" onClick={() => navigate("/login")}>Login</span>
+                    <button className="cta-btn" style={{ padding: "12px 24px", fontSize: 14 }} onClick={() => navigate("/login")}>Começar Grátis</button>
                 </div>
             </nav>
 
-            {/* Mobile Menu */}
-            {menuOpen && (
-                <div style={{ position: "fixed", top: 68, left: 0, right: 0, zIndex: 99, background: "#0B0F19", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "16px 24px" }}>
-                    {["Features", "How it Works", "Monetize with Whop", "Contact"].map((item, i) => (
-                        <div key={i} style={{ padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", color: "rgba(255,255,255,0.75)", fontSize: 15 }}
-                            onClick={() => scrollTo(["features", "how-it-works", "monetize", "contact"][i])}>
-                            {item}
-                        </div>
-                    ))}
-                </div>
-            )}
-
             {/* ── Hero ───────────────────────────────────────────────────── */}
-            <section style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "120px 24px 0", position: "relative" }}>
-                {/* Background glow */}
-                <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 700, height: 700, background: "radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
-                <div style={{ position: "absolute", top: "40%", left: "20%", width: 300, height: 300, background: "radial-gradient(circle, rgba(236,72,153,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+            <section style={{ position: "relative", paddingTop: 180, paddingBottom: 100, textAlign: "center", paddingInline: 24 }}>
+                <div className="hero-glow" />
 
-                <div className="fade-in" style={{ maxWidth: 800, position: "relative", zIndex: 1 }}>
-                    {/* Badge */}
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 28, padding: "6px 16px", borderRadius: 100, background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.25)", fontSize: 13, color: "#c084fc" }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#a855f7", display: "inline-block" }} />
-                        Fully Automated AI Clipping
-                    </div>
-
-                    <h1 style={{ fontSize: "clamp(44px, 8vw, 80px)", fontWeight: 900, lineHeight: 1.05, letterSpacing: "-2px", marginBottom: 24 }}>
-                        Automated Clips.<br />
-                        <span style={{ background: "linear-gradient(90deg, #a855f7, #ec4899, #eab308)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                            Zero Effort.
-                        </span>
+                <div className="fade-in" style={{ position: "relative", zIndex: 1 }}>
+                    <h1 className="condensed" style={{ fontSize: "clamp(50px, 10vw, 100px)", fontWeight: 900, textTransform: "uppercase", marginBottom: 32 }}>
+                        CLIPS VIRAIS.<br />
+                        ZERO ESFORÇO.<br />
+                        <span style={{ color: COLORS.primary }}>100% AUTOMÁTICO.</span>
                     </h1>
 
-                    <p style={{ fontSize: "clamp(17px, 2.5vw, 20px)", color: "rgba(255,255,255,0.55)", lineHeight: 1.7, marginBottom: 44, maxWidth: 620, margin: "0 auto 44px" }}>
-                        EasySlice.AI turns new YouTube uploads into social-ready highlight clips.<br />
-                        No downloading. No editing. No uploading. Just passive clips.
+                    <p style={{ color: COLORS.muted, fontSize: "clamp(18px, 2vw, 22px)", maxWidth: 700, margin: "0 auto 48px", lineHeight: 1.6 }}>
+                        O ClipStrike monitora seu canal, extrai os melhores momentos com IA avançada e publica nas redes sociais automaticamente.
                     </p>
 
-                    <button
-                        className="glow-btn"
-                        onClick={() => navigate("/login")}
-                        style={{ fontSize: 17, fontWeight: 700, padding: "18px 44px", borderRadius: 14, letterSpacing: "-0.3px", marginBottom: 28 }}
-                    >
-                        Start Passively Today →
-                    </button>
-
-                    {/* Notification banner */}
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "12px 20px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", backdrop: "blur(12px)", fontSize: 13, color: "rgba(255,255,255,0.55)", maxWidth: 460 }}>
-                        <span style={{ fontSize: 18 }}>⚡</span>
-                        Set once and let the content flow. EasySlice.AI handles everything after upload.
+                    <div style={{ display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap" }}>
+                        <button className="cta-btn" onClick={() => navigate("/login")}>Conectar Meu Canal</button>
+                        <button className="outline-btn" onClick={() => scrollTo("como-funciona")}>Ver Como Funciona</button>
                     </div>
-                </div>
-
-                {/* Wave */}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
-                    <AnimatedWave />
                 </div>
             </section>
 
-            {/* ── How It Works ────────────────────────────────────────────── */}
-            <section id="how-it-works" style={{ padding: "100px 24px", background: "linear-gradient(180deg, rgba(168,85,247,0.03) 0%, transparent 100%)" }}>
+            {/* ── Como Funciona ────────────────────────────────────────────── */}
+            <section id="como-funciona" style={{ padding: "120px 60px" }}>
                 <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-                    <div style={{ textAlign: "center", marginBottom: 60 }}>
-                        <p style={{ color: "#a855f7", fontSize: 13, fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", marginBottom: 12 }}>Simple Process</p>
-                        <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800, letterSpacing: "-1px" }}>How It Works</h2>
-                    </div>
+                    <h2 style={{ fontSize: 40, fontWeight: 900, textTransform: "uppercase", textAlign: "center", marginBottom: 64, letterSpacing: "-1px" }}>COMO FUNCIONA</h2>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20 }} id="features">
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 24 }}>
                         {steps.map((step, i) => (
-                            <div key={i} className="step-card" style={{ position: "relative" }}>
-                                {step.badge && (
-                                    <span style={{ position: "absolute", top: 16, right: 16, background: "linear-gradient(90deg, #a855f7, #ec4899)", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 6, letterSpacing: 1 }}>
-                                        {step.badge}
-                                    </span>
-                                )}
-                                <div style={{ width: 48, height: 48, borderRadius: 12, background: `${step.color}18`, border: `1px solid ${step.color}30`, display: "flex", alignItems: "center", justifyContent: "center", color: step.color, marginBottom: 16 }}>
-                                    {step.icon}
-                                </div>
-                                <div style={{ fontSize: 11, color: "#a855f7", fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>Step {i + 1}</div>
-                                <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>{step.title}</h3>
-                                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{step.desc}</p>
+                            <div key={i} className="card">
+                                <div style={{ color: COLORS.primary, marginBottom: 20 }}>{step.icon}</div>
+                                <h3 style={{ fontSize: 18, fontWeight: 800, textTransform: "uppercase", marginBottom: 12, letterSpacing: "-0.5px" }}>{step.title}</h3>
+                                <p style={{ color: COLORS.muted, fontSize: 14, lineHeight: 1.6 }}>{step.desc}</p>
+                                <div style={{ marginTop: 20, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.1)" }}>STEP 0{i + 1}</div>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* ── Why Choose ──────────────────────────────────────────────── */}
-            <section id="monetize" style={{ padding: "100px 24px" }}>
+            {/* ── Por que ClipStrike ────────────────────────────────────────── */}
+            <section id="preços" style={{ padding: "120px 60px", backgroundColor: COLORS.bgSecondary }}>
                 <div style={{ maxWidth: 900, margin: "0 auto" }}>
-                    <div style={{ textAlign: "center", marginBottom: 60 }}>
-                        <p style={{ color: "#ec4899", fontSize: 13, fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", marginBottom: 12 }}>The Smart Choice</p>
-                        <h2 style={{ fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800, letterSpacing: "-1px" }}>Why Choose EasySlice.AI?</h2>
-                    </div>
+                    <h2 style={{ fontSize: 40, fontWeight: 900, textTransform: "uppercase", textAlign: "center", marginBottom: 64, letterSpacing: "-1px" }}>POR QUE CLIPSTRIKE?</h2>
 
-                    {/* Comparison Table */}
-                    <div style={{ borderRadius: 20, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div style={{ borderRadius: 16, border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
                         {/* Header */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", background: "rgba(255,255,255,0.03)" }}>
-                            <div style={{ padding: "16px 24px", fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>Feature</div>
-                            <div style={{ padding: "16px 24px", background: "rgba(168,85,247,0.08)", borderLeft: "2px solid #a855f7", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-                                <span style={{ fontSize: 15, fontWeight: 700, background: "linear-gradient(90deg, #a855f7, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>EasySlice.AI</span>
-                            </div>
-                            <div style={{ padding: "16px 24px", borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
-                                <span style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>Manual Editing</span>
-                            </div>
+                        <div style={{ display: "flex", backgroundColor: "rgba(255,255,255,0.02)", borderBottom: `1px solid ${COLORS.border}` }}>
+                            <div style={{ flex: 1.5, padding: "20px 32px", fontSize: 14, fontWeight: 700, color: COLORS.muted }}>CARACTERÍSTICA</div>
+                            <div style={{ flex: 1, padding: "20px 32px", fontSize: 14, fontWeight: 900, color: COLORS.primary, textAlign: "center", borderLeft: `1px solid ${COLORS.primary}33`, backgroundColor: `${COLORS.primary}0D` }}>CLIPSTRIKE</div>
+                            <div style={{ flex: 1, padding: "20px 32px", fontSize: 14, fontWeight: 700, color: COLORS.muted, textAlign: "center", borderLeft: `1px solid ${COLORS.border}` }}>MANUAL</div>
                         </div>
 
-                        {comparisonRows.map((row, i) => (
-                            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                                <div style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 10 }}>
-                                    <span style={{ color: "#a855f7" }}>{row.icon}</span>
-                                    <span style={{ fontSize: 14, fontWeight: 600 }}>{row.label}</span>
+                        {comparison.map((row, i) => (
+                            <div key={i} style={{ display: "flex", borderBottom: i === comparison.length - 1 ? "none" : `1px solid ${COLORS.border}` }}>
+                                <div style={{ flex: 1.5, padding: "24px 32px", fontSize: 16, fontWeight: 500 }}>{row.feature}</div>
+                                <div style={{ flex: 1, padding: "24px 32px", textAlign: "center", fontWeight: 700, borderLeft: `1px solid ${COLORS.primary}33`, backgroundColor: `${COLORS.primary}05` }}>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                                        <span style={{ color: "#4ade80" }}><Icon.Check /></span>
+                                        {row.strike}
+                                    </div>
                                 </div>
-                                <div style={{ padding: "20px 24px", background: "rgba(168,85,247,0.05)", borderLeft: "2px solid #a855f7", borderRight: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span style={{ color: "#4ade80" }}><Icon.Check /></span>
-                                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.75)" }}>{row.easy}</span>
-                                </div>
-                                <div style={{ padding: "20px 24px", borderLeft: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span style={{ color: "#f87171" }}><Icon.X /></span>
-                                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>{row.manual}</span>
+                                <div style={{ flex: 1, padding: "24px 32px", textAlign: "center", color: COLORS.muted, borderLeft: `1px solid ${COLORS.border}`, fontWeight: 500, opacity: 0.6 }}>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                                        <span style={{ color: "#f87171" }}><Icon.X /></span>
+                                        {row.manual}
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -300,58 +232,50 @@ export default function LandingPage() {
             </section>
 
             {/* ── CTA Banner ──────────────────────────────────────────────── */}
-            <section style={{ padding: "60px 24px 100px" }}>
-                <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center", padding: "60px 40px", borderRadius: 24, background: "linear-gradient(135deg, rgba(168,85,247,0.15), rgba(236,72,153,0.1))", border: "1px solid rgba(168,85,247,0.2)" }}>
-                    <h2 style={{ fontSize: "clamp(28px, 5vw, 44px)", fontWeight: 800, marginBottom: 16, letterSpacing: "-1px" }}>Ready to go passive?</h2>
-                    <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, marginBottom: 36, lineHeight: 1.6 }}>
-                        Start clipping, start growing, start earning — all on autopilot.
-                    </p>
-                    <button className="glow-btn" onClick={() => navigate("/login")} style={{ fontSize: 16, fontWeight: 700, padding: "16px 40px" }}>
-                        Start Passively Today →
-                    </button>
+            <section style={{ padding: "120px 60px" }}>
+                <div style={{
+                    maxWidth: 1100, margin: "0 auto", padding: "80px 40px",
+                    backgroundColor: "#0F0F13", border: `1px solid ${COLORS.border}`,
+                    borderRadius: 24, textAlign: "center", position: "relative", overflow: "hidden",
+                    boxShadow: `0 0 60px ${COLORS.primary}1A`
+                }}>
+                    {/* Subtle glow edge */}
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: `${COLORS.primary}` }} />
+
+                    <h2 style={{ fontSize: "clamp(30px, 5vw, 56px)", fontWeight: 900, textTransform: "uppercase", marginBottom: 24, letterSpacing: "-2px" }}>COMECE A AUTOMATIZAR HOJE</h2>
+                    <p style={{ color: COLORS.muted, fontSize: 18, marginBottom: 44, maxWidth: 500, margin: "0 auto 44px" }}>Junte-se a criadores que não perdem mais tempo editando shorts.</p>
+                    <button className="cta-btn" onClick={() => navigate("/login")}>Conectar Meu Canal Agora</button>
                 </div>
             </section>
 
             {/* ── Footer ──────────────────────────────────────────────────── */}
-            <footer id="contact" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "60px 40px 32px" }}>
-                <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 48, marginBottom: 56 }}>
-                        <div>
-                            <Logo size={20} />
-                            <p style={{ marginTop: 14, fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, maxWidth: 220 }}>
-                                AI-powered automatic clip generation from YouTube uploads. Set it once, earn forever.
-                            </p>
-                        </div>
-                        <div>
-                            <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 2, marginBottom: 16 }}>Product</p>
-                            {["Dashboard", "Features", "How it Works", "Pricing"].map(l => (
-                                <p key={l} style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 10, cursor: "pointer" }}
-                                    onMouseOver={e => (e.currentTarget.style.color = "#fff")}
-                                    onMouseOut={e => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}>{l}</p>
-                            ))}
-                        </div>
-                        <div>
-                            <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 2, marginBottom: 16 }}>Company</p>
-                            {["About Us", "Blog", "Careers", "Contact"].map(l => (
-                                <p key={l} style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 10, cursor: "pointer" }}
-                                    onMouseOver={e => (e.currentTarget.style.color = "#fff")}
-                                    onMouseOut={e => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}>{l}</p>
-                            ))}
-                        </div>
-                        <div>
-                            <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 2, marginBottom: 16 }}>Legal</p>
-                            {["Privacy Policy", "Terms of Service", "Cookie Policy"].map(l => (
-                                <p key={l} style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 10, cursor: "pointer" }}
-                                    onMouseOver={e => (e.currentTarget.style.color = "#fff")}
-                                    onMouseOut={e => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}>{l}</p>
-                            ))}
-                        </div>
+            <footer style={{ padding: "80px 60px 40px", borderTop: `1px solid ${COLORS.border}` }}>
+                <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 40 }}>
+                    <div>
+                        <Logo size={20} />
+                        <p style={{ color: COLORS.muted, fontSize: 14, marginTop: 20, maxWidth: 280, lineHeight: 1.6 }}>
+                            ClipStrike utiliza inteligência artificial para automatizar seu workflow de conteúdo vertical.
+                        </p>
                     </div>
 
-                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 28, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-                        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)" }}>© 2026 EasySlice.AI. All rights reserved.</p>
-                        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)" }}>Made with ❤️ for creators</p>
+                    <div style={{ display: "flex", gap: 80 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                            <span style={{ fontWeight: 800, fontSize: 12, textTransform: "uppercase", letterSpacing: 1 }}>Produto</span>
+                            <span className="nav-link">Funcionalidades</span>
+                            <span className="nav-link">Como Funciona</span>
+                            <span className="nav-link">Preços</span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                            <span style={{ fontWeight: 800, fontSize: 12, textTransform: "uppercase", letterSpacing: 1 }}>Legal</span>
+                            <span className="nav-link">Privacidade</span>
+                            <span className="nav-link">Termos</span>
+                        </div>
                     </div>
+                </div>
+
+                <div style={{ maxWidth: 1200, margin: "60px auto 0", paddingTop: 40, borderTop: `1px solid rgba(255,255,255,0.03)`, display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
+                    <span>© 2026 ClipStrike. Todos os direitos reservados.</span>
+                    <span>Criado por Ferkelly</span>
                 </div>
             </footer>
         </div>

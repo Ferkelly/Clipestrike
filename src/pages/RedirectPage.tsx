@@ -22,7 +22,7 @@ export default function RedirectPage() {
                 <div className="bg-white/5 border border-white/10 backdrop-blur-2xl rounded-3xl p-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-gradient-s text-center">
                     <div className="flex justify-center mb-8">
                         <div className="relative">
-                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.4)] animate-pulse">
+                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#FF4D00] to-[#FF8C00] flex items-center justify-center shadow-[0_0_30px_rgba(255,77,0,0.4)] animate-pulse">
                                 <Zap className="h-10 w-10 text-white" fill="currentColor" />
                             </div>
                             <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-black p-1.5 rounded-lg shadow-lg">
@@ -31,22 +31,22 @@ export default function RedirectPage() {
                         </div>
                     </div>
 
-                    <h2 className="text-2xl font-bold tracking-tight mb-4">Redirecting...</h2>
+                    <h2 className="text-2xl font-bold tracking-tight mb-4">Redirecionando...</h2>
                     <p className="text-white/50 text-sm leading-relaxed mb-10">
-                        Redirecting to Google to authorize your YouTube account. This is a secure connection.
+                        Redirecionando para o Google para autorizar sua conta do YouTube. Esta é uma conexão segura.
                     </p>
 
                     {/* Loading Animation */}
                     <div className="flex flex-col items-center gap-4">
                         <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 animate-loading-bar" />
+                            <div className="h-full bg-gradient-to-r from-[#FF4D00] via-[#FF8C00] to-orange-400 animate-loading-bar" />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/20">Establishing Secure Session</span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/20">Estabelecendo Sessão Segura</span>
                     </div>
 
                     <div className="mt-10 flex items-center justify-center gap-2 text-white/30">
                         <ShieldCheck className="w-4 h-4" />
-                        <span className="text-xs">OAuth 2.0 Encrypted</span>
+                        <span className="text-xs">OAuth 2.0 Criptografado</span>
                     </div>
                 </div>
             </div>

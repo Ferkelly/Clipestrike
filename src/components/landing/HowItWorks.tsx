@@ -42,7 +42,7 @@ export function HowItWorks() {
     <section id="how-it-works" className="py-24 bg-background relative overflow-hidden">
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-16">
-          <motion.h2 
+          <motion.h2
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
@@ -54,7 +54,7 @@ export function HowItWorks() {
           >
             COMO FUNCIONA
           </motion.h2>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
@@ -68,14 +68,14 @@ export function HowItWorks() {
         <div className="flex overflow-x-auto pb-8 snap-x snap-mandatory hide-scrollbar gap-6 md:grid md:grid-cols-5 md:overflow-visible md:gap-4 relative">
           {/* Connector Line Background */}
           <div className="hidden md:block absolute top-[100px] left-[10%] right-[10%] h-[1px] bg-white/10" />
-          
+
           {/* Animated Connector Line */}
-          <motion.div 
+          <motion.div
             initial={{ width: "0%" }}
             whileInView={{ width: "80%" }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 1.5, ease: "easeInOut", delay: 0.5 }}
-            className="hidden md:block absolute top-[100px] left-[10%] h-[1px] bg-gradient-to-r from-primary via-accent to-transparent" 
+            className="hidden md:block absolute top-[100px] left-[10%] h-[1px] bg-gradient-to-r from-primary via-accent to-transparent opacity-30"
           />
 
           {steps.map((step, idx) => (
@@ -89,13 +89,12 @@ export function HowItWorks() {
               className="snap-center shrink-0 w-[280px] md:w-auto glass-card rounded-2xl p-6 relative group hover:border-primary/50 hover:shadow-[0_0_20px_rgba(255,59,59,0.2)] transition-all duration-300 bg-[#0f0f0f]"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
-              
+
               {step.badge && (
-                <div className={`absolute -top-3 right-4 text-[10px] font-mono font-bold px-2 py-1 rounded-full ${
-                  step.badge === 'NOVO!' 
-                    ? 'bg-gradient-primary text-white' 
-                    : 'bg-primary/20 text-primary border border-primary/30'
-                }`}>
+                <div className={`absolute -top-3 right-4 text-[10px] font-mono font-bold px-2 py-1 rounded-full ${step.badge === 'NOVO!'
+                    ? 'bg-primary text-white'
+                    : 'bg-primary/10 text-primary border border-primary/20'
+                  }`}>
                   {step.badge}
                 </div>
               )}
@@ -103,7 +102,7 @@ export function HowItWorks() {
               <div className="mb-6 bg-white/5 w-16 h-16 rounded-xl flex items-center justify-center border border-white/10 hover-bounce-icon transition-transform relative z-10 mx-auto md:mx-0">
                 {step.icon}
               </div>
-              
+
               <h3 className="font-display text-2xl mb-3 text-center md:text-left">{step.title}</h3>
               <p className="text-sm text-muted-foreground font-sans leading-relaxed text-center md:text-left">
                 {step.desc}

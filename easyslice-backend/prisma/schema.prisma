@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PlanName {
+  FREE
+  PRO
+  CREATOR
+}
+
+model Plan {
+  id                  String   @id @default(uuid())
+  name                PlanName @unique
+  maxChannels        Int
+  maxPlatforms       Int
+  maxClipsPerMonth   Int
+  users               User[]
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  role          Role     @default(USER)
+  planId        String
+  plan          Plan     @relation(fields: [planId], references: [id])
+  customerId    String?  // Whop/Stripe Customer ID
+  subscriptionId String? // Whop/Stripe Subscription ID
+  expiresAt     DateTime?
+  
+  channels      Channel[]
+  platforms     PlatformConnection[]
+  agentRuns     AgentRun[]
+  oauthTokens   OAuthToken[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model OAuthToken {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  provider      String   // e.g., "google"
+  accessToken   String
+  refreshToken  String?
+  expiry        DateTime?
+  
+  channels      Channel[]
+  createdAt     DateTime @default(now())
+}
+
+model Channel {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  youtubeChannelId String?  @unique
+  title             String
+  url               String
+  thumbnail         String?
+  status            String   @default("connected") // connected, error, limited
+  oauthTokenId      String?
+  oauthToken        OAuthToken? @relation(fields: [oauthTokenId], references: [id])
+  
+  videos            Video[]
+  connectedAt       DateTime @default(now())
+}
+
+model Video {
+  id                String   @id @default(uuid())
+  channelId         String
+  channel           Channel  @relation(fields: [channelId], references: [id])
+  externalId        String   @unique // YouTube Video ID
+  title             String
+  status            String   @default("discovered") // discovered, queued, processing, clipped, failed
+  
+  clips             Clip[]
+  agentRuns         AgentRun[]
+  createdAt         DateTime @default(now())
+}
+
+model Clip {
+  id            String   @id @default(uuid())
+  videoId       String
+  video         Video    @relation(fields: [videoId], references: [id])
+  title         String
+  hook          String?
+  viralScore    Int?
+  startTime     Float
+  endTime       Float
+  s3Url         String
+  thumbnailUrl  String?
+  captions      Json?    // SRT/VTT data
+  status        String   @default("pending") // pending, posted, error
+  
+  posts         Post[]
+  createdAt     DateTime @default(now())
+}
+
+model AgentRun {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  videoId       String
+  video         Video    @relation(fields: [videoId], references: [id])
+  status        String   @default("running") // running, completed, failed
+  logs          String?  @db.Text
+  
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+}
+
+model PlatformConnection {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  platform      String   // youtube, tiktok, instagram, facebook
+  credentials   Json     // tokens / secrets encrypted
+  status        String   @default("active")
+  
+  createdAt     DateTime @default(now())
+}
+
+model Post {
+  id            String   @id @default(uuid())
+  clipId        String
+  clip          Clip     @relation(fields: [clipId], references: [id])
+  platform      String
+  externalPostId String?
+  status        String   @default("posted")
+  error         String?
+  
+  postedAt      DateTime @default(now())
+}

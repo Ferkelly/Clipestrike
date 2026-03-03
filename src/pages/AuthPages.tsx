@@ -9,9 +9,9 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
         <div className="min-h-screen bg-[#0B0F19] text-white font-sans flex flex-col relative overflow-hidden">
             {/* Background Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[120px] opacity-30 mix-blend-screen" />
-                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] opacity-20 mix-blend-screen" />
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-blue-900/10" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-red-600/10 rounded-full blur-[120px] opacity-30 mix-blend-screen" />
+                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-600/10 rounded-full blur-[100px] opacity-20 mix-blend-screen" />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-red-900/10" />
             </div>
 
             {/* Nav */}
@@ -20,15 +20,15 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
                     className="flex items-center gap-2 cursor-pointer"
                     onClick={() => navigate("/")}
                 >
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(255,90,31,0.5)]">
                         <Zap className="h-5 w-5 text-white" fill="currentColor" />
                     </div>
-                    <span className="font-display text-xl font-bold tracking-tight bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 bg-clip-text text-transparent">
-                        EasySlice.AI
+                    <span className="font-display text-xl font-bold tracking-tight text-primary">
+                        CLIPSTRIKE
                     </span>
                 </div>
                 <Link to="/">
-                    <Button variant="ghost" className="text-sm text-white/60 hover:text-white hover:bg-white/5">Back to Home</Button>
+                    <Button variant="ghost" className="text-sm text-white/60 hover:text-white hover:bg-white/5">Voltar para Home</Button>
                 </Link>
             </nav>
 
@@ -39,7 +39,7 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="relative z-10 py-6 text-center text-xs text-white/30 border-t border-white/5">
-                &copy; {new Date().getFullYear()} EasySlice.AI. All rights reserved.
+                &copy; {new Date().getFullYear()} ClipStrike. Todos os direitos reservados.
             </div>
             <style>{`
                 .fade-in {
@@ -69,8 +69,8 @@ export function SignupPage() {
         <AuthLayout>
             <div className="bg-white/5 border border-white/10 backdrop-blur-2xl rounded-2xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] fade-in">
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold tracking-tight mb-2">Sign Up</h2>
-                    <p className="text-sm text-white/50">Create your EasySlice.AI account to get started.</p>
+                    <h2 className="text-3xl font-bold tracking-tight mb-2">Criar conta</h2>
+                    <p className="text-sm text-white/50">Crie sua conta no ClipStrike para começar.</p>
                 </div>
 
                 <form onSubmit={handleSignup} className="space-y-4">
@@ -80,8 +80,8 @@ export function SignupPage() {
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-white/20"
-                            placeholder="name@example.com"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-red-500/50 transition-all placeholder:text-white/20"
+                            placeholder="nome@exemplo.com"
                             required
                         />
                     </div>
@@ -91,7 +91,7 @@ export function SignupPage() {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-white/20"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-red-500/50 transition-all placeholder:text-white/20"
                             placeholder="••••••••"
                             required
                         />
@@ -99,17 +99,17 @@ export function SignupPage() {
 
                     <button
                         type="submit"
-                        className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:scale-[1.01] transition-all mt-6"
+                        className="w-full h-12 rounded-xl bg-primary text-white font-bold text-sm shadow-[0_0_20px_rgba(255,90,31,0.3)] hover:shadow-[0_0_30px_rgba(255,90,31,0.5)] hover:scale-[1.01] transition-all mt-6"
                     >
-                        Sign Up
+                        Criar Conta
                     </button>
                 </form>
 
                 <div className="mt-8 text-center pt-6 border-t border-white/5">
                     <p className="text-sm text-white/50">
-                        Already have an account?{" "}
-                        <Link to="/login" className="text-white hover:text-purple-400 font-bold transition-colors">
-                            Sign in
+                        Já tem uma conta?{" "}
+                        <Link to="/login" className="text-white hover:text-red-400 font-bold transition-colors">
+                            Entrar
                         </Link>
                     </p>
                 </div>
@@ -133,8 +133,8 @@ export function LoginPage() {
         <AuthLayout>
             <div className="bg-white/5 border border-white/10 backdrop-blur-2xl rounded-2xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] fade-in">
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold tracking-tight mb-2">Welcome Back</h2>
-                    <p className="text-sm text-white/50">Login to your account to continue</p>
+                    <h2 className="text-3xl font-bold tracking-tight mb-2">Bem-vindo de volta</h2>
+                    <p className="text-sm text-white/50">Entre na sua conta para continuar</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -144,8 +144,8 @@ export function LoginPage() {
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-white/20"
-                            placeholder="name@example.com"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-red-500/50 transition-all placeholder:text-white/20"
+                            placeholder="nome@exemplo.com"
                             required
                         />
                     </div>
@@ -155,7 +155,7 @@ export function LoginPage() {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-white/20"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-red-500/50 transition-all placeholder:text-white/20"
                             placeholder="••••••••"
                             required
                         />
@@ -163,17 +163,17 @@ export function LoginPage() {
 
                     <button
                         type="submit"
-                        className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:scale-[1.01] transition-all mt-6"
+                        className="w-full h-12 rounded-xl bg-primary text-white font-bold text-sm shadow-[0_0_20px_rgba(255,90,31,0.3)] hover:shadow-[0_0_30px_rgba(255,90,31,0.5)] hover:scale-[1.01] transition-all mt-6"
                     >
-                        Sign In
+                        Entrar
                     </button>
                 </form>
 
                 <div className="mt-8 text-center pt-6 border-t border-white/5">
                     <p className="text-sm text-white/50">
-                        Don't have an account?{" "}
-                        <Link to="/signup" className="text-white hover:text-purple-400 font-bold transition-colors">
-                            Sign up for free
+                        Não tem uma conta?{" "}
+                        <Link to="/signup" className="text-white hover:text-red-400 font-bold transition-colors">
+                            Criar conta grátis
                         </Link>
                     </p>
                 </div>
