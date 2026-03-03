@@ -23,7 +23,6 @@ class YouTubeService {
                 part: 'snippet,statistics,contentDetails',
                 forHandle: handle
             });
-            // Return the item directly — shim already fetched full data via fallback
             const channel = response.data.items?.[0];
             console.log(`[YouTubeService] Found channel:`, channel?.snippet?.title || 'not found');
             if (!channel) {

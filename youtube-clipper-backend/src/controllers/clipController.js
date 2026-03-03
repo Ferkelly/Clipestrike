@@ -122,7 +122,15 @@ class ClipController {
         const fs = require('fs');
         const emitProgress = (step, percent, msg) => {
             console.log(`[Process] [${percent}%] ${msg}`);
-            io?.emit('video-progress', { id: videoId, videoId, step, percent: Math.round(percent), message: msg, title: video.title || 'Vídeo' });
+            // Emitir para o quarto do usuário para evitar vazamento global
+            io?.to(video.user_id).emit('video-progress', {
+                id: videoId,
+                videoId,
+                step,
+                percent: Math.round(percent),
+                message: msg,
+                title: video.title || 'Vídeo'
+            });
         };
 
         try {
@@ -138,7 +146,7 @@ class ClipController {
             await youTubeService.downloadVideo(videoUrl, downloadPath);
 
             // 2. Transcrever
-            emitProgress('TRANSCRIPTION', 30, 'Extraindo áudio e transcrevendo (IA)...');
+            emitProgress('TRANSCRIPTION', 30, 'Transcrevendo áudio (IA)...');
             const audioPath = path.join(__dirname, '../../uploads', `${videoId}.mp3`);
 
             await ffmpegService.extractAudio(downloadPath, audioPath, (p) => {
@@ -162,10 +170,10 @@ class ClipController {
             const clipsCount = analysis.clips.length;
             const createdClips = [];
 
-            emitProgress('CLIPPING', 80, `Gerando ${clipsCount} clips virais...`);
+            emitProgress('CLIPPING', 75, `Gerando ${clipsCount} clips virais...`);
 
             for (let i = 0; i < clipsCount; i++) {
-                const startPercent = 80 + (i / clipsCount) * 15;
+                const startPercent = 75 + (i / clipsCount) * 15;
                 const clipData = analysis.clips[i];
 
                 emitProgress('CLIPPING', startPercent, `Clip ${i + 1} de ${clipsCount}: ${clipData.title}`);
@@ -196,9 +204,10 @@ class ClipController {
                         xOffset: xOffset,
                         subtitlesPath: assPath,
                         onProgress: (p) => {
-                            const stagePercent = (1 / clipsCount) * 50;
+                            const stagePercent = (1 / clipsCount) * 15;
                             const currentPercent = startPercent + (p / 100) * stagePercent;
                             emitProgress('CLIPPING_PROGRESS', currentPercent, `Processando clip ${i + 1}...`);
+                            if (p > 80) emitProgress('SUBTITLES', 90, `Adicionando legendas...`);
                         }
                     }
                 );
@@ -237,7 +246,8 @@ class ClipController {
             if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
             if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
 
-            io?.emit('video-progress', { id: videoId, videoId, status: 'done', clipsCount: createdClips.length, message: 'Processamento concluído!' });
+            emitProgress('DONE', 100, 'Clips prontos! ✅');
+            io?.to(video.user_id).emit('video-progress', { id: videoId, videoId, status: 'done', clipsCount: createdClips.length, message: 'Processamento concluído!', percent: 100 });
 
             // Auto-postagem
             autoPostService.autoPublishReadyClips(videoId, video.user_id).catch(console.error);
@@ -245,7 +255,7 @@ class ClipController {
         } catch (err) {
             console.error('[Pipeline Error]:', err);
             await db.updateVideoStatus(videoId, 'failed', { error_message: err.message });
-            io?.emit('video-progress', { id: videoId, videoId, status: 'error', message: err.message });
+            io?.to(video.user_id).emit('video-error', { id: videoId, videoId, message: err.message });
         }
     }
 

@@ -111,6 +111,8 @@ export default function DashboardPage() {
     const [url, setUrl] = useState("");
     const [urlError, setUrlError] = useState("");
     const [processing, setProcessing] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [step, setStep] = useState("");
     const [clips, setClips] = useState<Clip[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [runs, setRuns] = useState<VideoJob[]>([]);
@@ -365,29 +367,86 @@ export default function DashboardPage() {
         return () => { socket.disconnect(); };
     }, []);
 
+    function detectUrlType(url: string): "video" | "channel" | "invalid" {
+        if (/youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\//.test(url))
+            return "video";
+        if (/youtube\.com\/@|youtube\.com\/channel\/|youtube\.com\/c\/|youtube\.com\/user\//.test(url))
+            return "channel";
+        return "invalid";
+    }
+
     const handleProcess = async () => {
-        const videoUrl = prompt("Enter YouTube Video or Channel URL:");
-        if (!videoUrl) return;
+        const type = detectUrlType(url);
+        if (type === "invalid") {
+            setUrlError("Cole uma URL válida do YouTube (vídeo ou canal)");
+            return;
+        }
 
         setProcessing(true);
+        setUrlError("");
+        setProgress(0);
+        setStep("Iniciando...");
+
         try {
             const token = localStorage.getItem("clipstrike_token");
-            const isChannel = videoUrl.includes("/@") || videoUrl.includes("/channel/");
             const res = await fetch(`${API_URL}/videos/import`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify({ url: videoUrl, type: isChannel ? 'channel' : 'video' })
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({ url, type }),
             });
-            if (res.ok) {
-                setActiveTab("runs");
-            } else {
+
+            if (!res.ok) {
                 const data = await res.json();
-                alert(data.error || "Error processing video");
+                throw new Error(data.error || `Erro ${res.status}`);
             }
+
+            const { videoId } = await res.json();
+
+            // Conectar Socket.io para progresso se ainda não estiver conectado no useEffect
+            const socket: Socket = io(SOCKET_URL, {
+                auth: { token }
+            });
+
+            // Entrar no quarto do usuário
+            // Precisamos buscar o ID do usuário se não tivermos
+            const profileRes = await fetch(`${API_URL}/auth/me`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const profileData = await profileRes.json();
+            if (profileData.user?.id) {
+                socket.emit('join-user-room', profileData.user.id);
+            }
+
+            socket.on("video-progress", (data: any) => {
+                if (data.videoId !== videoId) return;
+                setProgress(data.percent);
+                setStep(data.message);
+
+                if (data.status === 'done' || data.percent >= 100) {
+                    setProcessing(false);
+                    setStep("Concluído! ✅");
+                    socket.disconnect();
+                    fetchClips();
+                    setActiveTab("clips");
+                }
+            });
+
+            socket.on("video-error", (data: any) => {
+                if (data.videoId !== videoId) return;
+                setProcessing(false);
+                setUrlError(data.message || "Erro no processamento");
+                socket.disconnect();
+            });
+
         } catch (err: any) {
-            alert("Error: " + err.message);
-        } finally {
             setProcessing(false);
+            setUrlError(err.message.includes("fetch")
+                ? "Servidor indisponível. Tente novamente."
+                : err.message
+            );
         }
     };
 
@@ -457,20 +516,53 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="flex items-center gap-3 fade-in">
+                        <div className="relative group mr-2">
+                            <input
+                                type="text"
+                                value={url}
+                                onChange={(e) => setUrl(e.target.value)}
+                                placeholder="Cole URL do vídeo ou canal..."
+                                className="w-64 lg:w-96 px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-xs focus:border-primary outline-none transition-all placeholder:text-white/20"
+                            />
+                            {urlError && <div className="absolute top-full left-0 mt-2 text-[10px] text-red-500 font-bold uppercase tracking-wider">{urlError}</div>}
+                        </div>
                         <button onClick={() => window.location.reload()} className="p-3 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60">
                             <RefreshCw className="w-5 h-5" />
                         </button>
-                        <button onClick={() => navigate("/app/plataformas")} className="hidden md:flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all">
-                            <Share2 className="w-4 h-4" /> Conectar Plataformas
-                        </button>
-                        <button onClick={handleProcess} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all">
-                            <Plus className="w-4 h-4" /> Adicionar Vídeo
-                        </button>
-                        <button className="hidden lg:flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all">
-                            <CreditCard className="w-4 h-4" /> Renovar Assinatura
+                        <button
+                            disabled={processing}
+                            onClick={handleProcess}
+                            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(255,90,31,0.3)] hover:scale-[1.02] transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100"
+                        >
+                            {processing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                            {processing ? "Processando..." : "Processar Agora"}
                         </button>
                     </div>
                 </header>
+
+                {processing && (
+                    <div className="mx-8 mt-8 fade-in">
+                        <div className="bg-gradient-to-r from-primary/10 to-orange-500/5 border border-primary/20 rounded-3xl p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                                        <PlayCircle className="w-5 h-5 text-primary animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-sm">IA está trabalhando no seu vídeo</h4>
+                                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mt-0.5">{step}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-2xl font-bold text-primary">{progress}%</span>
+                                </div>
+                            </div>
+                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="p-8 lg:p-12 space-y-12">
                     {/* Stats */}
