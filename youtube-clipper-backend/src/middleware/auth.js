@@ -25,13 +25,22 @@ const authenticate = async (req, res, next) => {
 
         const { data: user, error } = await supabase
             .from('users')
-            .select('id, name, email, avatar, google_id')
+            .select('id, name, email, avatar, google_id, created_at')
             .eq('id', decoded.sub)
             .single();
 
         if (error || !user) {
             return res.status(401).json({ error: 'Usuário não encontrado ou token inválido.' });
         }
+
+        // Buscar plano do usuário
+        const { data: settings } = await supabase
+            .from('user_settings')
+            .select('plan')
+            .eq('user_id', user.id)
+            .single();
+
+        user.plan = settings?.plan || 'free';
 
         req.user = user;
         next();
