@@ -64,7 +64,7 @@ export function ConnectChannelPage() {
         setLoading(true);
         setError("");
         setSuccess("");
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("clipstrike_token");
         try {
             const res = await fetch(`${API_URL}/channels`, {
                 method: "POST",
@@ -84,7 +84,7 @@ export function ConnectChannelPage() {
     }
 
     async function handleRemove(id: string) {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("clipstrike_token");
         await fetch(`${API_URL}/channels/${id}`, {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` },

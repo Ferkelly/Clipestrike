@@ -58,7 +58,7 @@ export default function SettingsPage() {
 
     const fetchUser = async () => {
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             const res = await fetch(`${API_URL}/auth/me`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
     const fetchSettings = async () => {
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             const res = await fetch(`${API_URL}/user/settings`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -100,7 +100,7 @@ export default function SettingsPage() {
     const handleSaveProfile = async () => {
         setSaving(true);
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             const res = await fetch(`${API_URL}/auth/profile`, {
                 method: "PUT",
                 headers: {
@@ -129,7 +129,7 @@ export default function SettingsPage() {
         setNotifications(newSettings);
 
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             await fetch(`${API_URL}/user/settings`, {
                 method: "PUT",
                 headers: {
@@ -150,7 +150,7 @@ export default function SettingsPage() {
         }
         setSaving(true);
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             const res = await fetch(`${API_URL}/auth/password`, {
                 method: "PUT",
                 headers: {
@@ -179,7 +179,7 @@ export default function SettingsPage() {
         if (deleteConfirm !== "EXCLUIR") return;
 
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             const res = await fetch(`${API_URL}/auth/account`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` }

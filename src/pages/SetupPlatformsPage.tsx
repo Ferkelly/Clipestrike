@@ -33,7 +33,7 @@ export default function SetupPlatformsPage() {
         if (!username.trim() || selected.size === 0) return;
         setSaving(true);
         setError("");
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("clipstrike_token");
         try {
             const res = await fetch(`${API_URL}/autopost/platforms/config`, {
                 method: "POST",

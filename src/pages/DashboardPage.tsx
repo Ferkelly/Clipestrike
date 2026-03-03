@@ -105,7 +105,7 @@ export default function DashboardPage() {
 
     const fetchClips = async () => {
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             const res = await fetch(`${API_URL}/clips`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -123,7 +123,7 @@ export default function DashboardPage() {
 
     const fetchChannels = async () => {
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             const res = await fetch(`${API_URL}/channels`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -136,7 +136,7 @@ export default function DashboardPage() {
 
     const fetchPlatformStatus = async () => {
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             const res = await fetch(`${API_URL}/autopost/platforms`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -155,7 +155,7 @@ export default function DashboardPage() {
         };
         init();
 
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("clipstrike_token");
         const socket: Socket = io(SOCKET_URL, {
             auth: { token }
         });
@@ -231,7 +231,7 @@ export default function DashboardPage() {
 
         setProcessing(true);
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             console.log("Iniciando requisição para:", `${API_URL}/videos/import`);
 
             const res = await fetch(`${API_URL}/videos/import`, {
@@ -280,7 +280,7 @@ export default function DashboardPage() {
         if (!channelUrl) return;
 
         try {
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("clipstrike_token");
             const res = await fetch(`${API_URL}/channels`, {
                 method: "POST",
                 headers: {
