@@ -56,6 +56,7 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
 
 export function SignupPage() {
     const navigate = useNavigate();
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
@@ -68,10 +69,10 @@ export function SignupPage() {
         setError("");
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/signup`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ name, email, password }),
             });
 
             const data = await res.json();
@@ -105,6 +106,17 @@ export function SignupPage() {
                 </div>
 
                 <form onSubmit={handleSignup} className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Nome</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-red-500/50 transition-all placeholder:text-white/20"
+                            placeholder="Seu nome"
+                            required
+                        />
+                    </div>
                     <div className="space-y-2">
                         <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Email</label>
                         <input
@@ -170,7 +182,7 @@ export function LoginPage() {
         setError("");
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/signin`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),

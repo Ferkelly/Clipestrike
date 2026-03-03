@@ -25,7 +25,8 @@ const allowedOrigins = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://clipstrike.tech"
+    "https://clipstrike.tech",
+    "https://www.clipstrike.tech"
 ].filter(Boolean);
 
 const io = new Server(httpServer, {
