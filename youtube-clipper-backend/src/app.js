@@ -17,9 +17,20 @@ const { startMonitorCron } = require('./jobs/monitorCron');
 
 const app = express();
 const httpServer = createServer(app);
+
+// Configuração robusta de CORS
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://clipstrike.tech"
+].filter(Boolean);
+
 const io = new Server(httpServer, {
     cors: {
-        origin: [process.env.FRONTEND_URL || "http://localhost:3000", "http://127.0.0.1:3000"],
+        origin: allowedOrigins,
         methods: ["GET", "POST"]
     }
 });
@@ -27,7 +38,17 @@ const io = new Server(httpServer, {
 // Middleware
 app.use(helmet());
 app.use(cors({
-    origin: [process.env.FRONTEND_URL || "http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: function (origin, callback) {
+        // Permitir requests sem origin (como mobile apps ou curl)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+            callback(null, true);
+        } else {
+            console.log("CORS Bloqueado para origin:", origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -59,9 +80,12 @@ app.use('/api/monitor', monitorRoutes);
 app.use('/api/autopost', autoPostRoutes);
 app.use('/api/user', userRoutes);
 
-// Health check
+// Health check (Ambas as rotas para evitar erro 404)
 app.get('/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date() });
+    res.json({ status: 'OK', timestamp: new Date(), environment: process.env.NODE_ENV });
+});
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date(), environment: process.env.NODE_ENV });
 });
 
 // Error handler
