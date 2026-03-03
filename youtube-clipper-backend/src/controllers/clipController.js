@@ -119,8 +119,8 @@ class ClipController {
         };
 
         try {
-            // 1. Download do vídeo (se necessário ou forçar novo para garantir .mp4)
-            emitProgress('DOWNLOADING', 10, 'Baixando vídeo do YouTube...');
+            // 1. Download do vídeo
+            emitProgress('DOWNLOAD', 10, 'Baixando vídeo do YouTube...');
             const videoUrl = `https://youtube.com/watch?v=${video.youtube_video_id}`;
             const downloadPath = path.join(__dirname, '../../uploads', `${videoId}.mp4`);
 
@@ -131,22 +131,22 @@ class ClipController {
             await youTubeService.downloadVideo(videoUrl, downloadPath);
 
             // 2. Transcrever
-            emitProgress('TRANSCRIBING', 20, 'Extraindo áudio e transcrevendo (IA)...');
+            emitProgress('TRANSCRIPTION', 30, 'Extraindo áudio e transcrevendo (IA)...');
             const audioPath = path.join(__dirname, '../../uploads', `${videoId}.mp3`);
 
             await ffmpegService.extractAudio(downloadPath, audioPath, (p) => {
-                emitProgress('TRANSCRIBING', 20 + (p * 0.05), 'Extraindo áudio...');
+                emitProgress('TRANSCRIPTION', 10 + (p * 0.20), 'Extraindo áudio...');
             });
 
             const transcriptionData = await aiService.transcribeWithWords(audioPath);
             const transcription = transcriptionData.text;
 
             // 3. Analisar momentos virais
-            emitProgress('AI_ANALYSIS', 30, 'Analisando momentos virais com IA...');
+            emitProgress('AI', 50, 'Analisando momentos virais com IA...');
             const analysis = await aiService.analyzeTranscription(transcription);
 
             // 4. Calcular enquadramento inteligente
-            emitProgress('FRAMING', 40, 'Calculando enquadramento inteligente...');
+            emitProgress('IA', 55, 'Calculando enquadramento inteligente...');
             const framingData = await aiService.getSmartFraming(downloadPath);
             const xOffset = framingData.x_offset_pct;
 
@@ -155,13 +155,13 @@ class ClipController {
             const clipsCount = analysis.clips.length;
             const createdClips = [];
 
-            emitProgress('CLIPPING', 50, `Gerando ${clipsCount} clips virais...`);
+            emitProgress('CLIPPING', 80, `Gerando ${clipsCount} clips virais...`);
 
             for (let i = 0; i < clipsCount; i++) {
-                const startPercent = 50 + (i / clipsCount) * 50;
+                const startPercent = 80 + (i / clipsCount) * 15;
                 const clipData = analysis.clips[i];
 
-                emitProgress('CLIPPING_PROGRESS', startPercent, `Clip ${i + 1} de ${clipsCount}: ${clipData.title}`);
+                emitProgress('CLIPPING', startPercent, `Clip ${i + 1} de ${clipsCount}: ${clipData.title}`);
 
                 const startSeconds = this.timeToSeconds(clipData.start);
                 const endSeconds = this.timeToSeconds(clipData.end);

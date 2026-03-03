@@ -45,7 +45,7 @@ export default function App() {
         } />
 
         {/* App */}
-        <Route path="/dashboard" element={
+        <Route path="/dashboard/*" element={
           <PrivateRoute><DashboardPage /></PrivateRoute>
         } />
 
