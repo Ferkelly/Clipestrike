@@ -178,7 +178,7 @@ router.post("/process-with-options", authenticate, async (req, res) => {
 
         // Disparar pipeline com opções
         // Injetar o io do app (definido no server.js)
-        const io = req.app.get('socketio');
+        const io = req.app.get('io');
         clipController.processVideoPipelineWithOptions(video.id, video, io, processingOptions).catch(console.error);
 
     } catch (err) {
