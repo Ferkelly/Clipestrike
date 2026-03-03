@@ -63,20 +63,14 @@ router.post("/upload-file",
             const duration = Math.floor(parseFloat(probe.format?.duration || "0"));
 
             // Criar registro
-            const { data: video, error } = await supabase
-                .from("videos")
-                .insert({
-                    user_id: userId,
-                    title: fileName.replace(/\.[^/.]+$/, ""),
-                    url: filePath,
-                    source: "manual_upload",
-                    duration,
-                    status: "uploaded",
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
+            const video = await db.createVideo({
+                user_id: userId,
+                title: fileName.replace(/\.[^/.]+$/, ""), // remove extensão
+                url: filePath,       // caminho local
+                source: "manual_upload",
+                duration,
+                status: "uploaded",
+            });
 
             res.json({
                 videoId: video.id,

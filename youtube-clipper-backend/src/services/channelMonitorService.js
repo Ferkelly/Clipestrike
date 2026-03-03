@@ -28,24 +28,17 @@ class ChannelMonitorService {
 
         try {
             // Cria o registro do vídeo no banco com status pending
-            const { data: video, error } = await supabase
-                .from("videos")
-                .insert({
-                    user_id: userId,
-                    channel_id: channelId,
-                    youtube_video_id: youtubeVideoId,
-                    title,
-                    thumbnail_url: thumbnail,
-                    status: "pending",
-                    source: "auto_monitor",
-                    published_at: new Date().toISOString()
-                })
-                .select()
-                .single();
-
-            if (error || !video) {
-                throw new Error(`Erro ao inserir vídeo: ${error?.message}`);
-            }
+            const { db } = require('./database');
+            const video = await db.createVideo({
+                user_id: userId,
+                channel_id: channelId,
+                youtube_video_id: youtubeVideoId,
+                title,
+                thumbnail_url: thumbnail,
+                status: "pending",
+                source: "auto_monitor",
+                published_at: new Date().toISOString()
+            });
 
             // Chama a rota de processamento existente no backend
             const res = await axios.post(`${API_BASE}/api/videos/${video.id}/process`,

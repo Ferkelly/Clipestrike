@@ -54,24 +54,16 @@ notifier.on("notified", async (data) => {
         }
 
         // Cria o vídeo no banco
-        const { data: newVideo, error: insertError } = await supabase
-            .from("videos")
-            .insert({
-                user_id: channelRecord.user_id,
-                channel_id: channelRecord.id,
-                youtube_video_id: video.id,
-                title: video.title,
-                url: `https://www.youtube.com/watch?v=${video.id}`,
-                status: "pending",
-                source: "webhook",
-            })
-            .select()
-            .single();
-
-        if (insertError || !newVideo) {
-            console.error(`[Webhook] Erro ao inserir vídeo:`, insertError?.message);
-            return;
-        }
+        const { db } = require("../config/database");
+        const newVideo = await db.createVideo({
+            user_id: channelRecord.user_id,
+            channel_id: channelRecord.id,
+            youtube_video_id: video.id,
+            title: video.title,
+            url: `https://www.youtube.com/watch?v=${video.id}`,
+            status: "pending",
+            source: "webhook",
+        });
 
         // Dispara o pipeline de processamento internamente
         // Nota: O endpoint /api/videos/process deve existir e aceitar x-internal-key
