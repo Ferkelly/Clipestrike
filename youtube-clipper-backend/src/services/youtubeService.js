@@ -188,10 +188,19 @@ class YouTubeService {
         const ytDlpExec = require('yt-dlp-exec');
 
         try {
-            await ytDlpExec(videoUrl, {
+            const options = {
                 output: outputPath,
                 format: 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            });
+            };
+
+            // Verificar se existe arquivo de cookies para evitar bloqueio de bot
+            const cookiesPath = path.join(process.cwd(), 'cookies.txt');
+            if (fs.existsSync(cookiesPath)) {
+                console.log(`[YouTubeService] Usando cookies de: ${cookiesPath}`);
+                options.cookies = cookiesPath;
+            }
+
+            await ytDlpExec(videoUrl, options);
             return outputPath;
         } catch (error) {
             throw new Error(`Falha ao baixar vídeo: ${error.message}`);
