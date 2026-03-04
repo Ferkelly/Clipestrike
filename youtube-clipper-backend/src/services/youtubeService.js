@@ -225,7 +225,7 @@ class YouTubeService {
             console.log("[Download] Executando comando:", command);
 
             const { stdout, stderr } = await execAsync(command, {
-                timeout: 10 * 60 * 1000, // 10 minutos
+                timeout: 30 * 60 * 1000, // 30 minutos
             });
 
             if (!fs.existsSync(outputPath)) {

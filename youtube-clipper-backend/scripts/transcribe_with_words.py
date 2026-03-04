@@ -3,8 +3,8 @@ import json
 import stable_whisper
 
 def transcribe(audio_path):
-    # Load model
-    model = stable_whisper.load_model('base')
+    # Load model (using 'tiny' for speed on CPU VPS)
+    model = stable_whisper.load_model('tiny')
     
     # Transcribe with word-level timestamps
     # language="pt" to ensure Portuguese detection

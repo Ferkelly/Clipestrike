@@ -117,7 +117,9 @@ class AIService {
 
         try {
             console.log(`[AI] Transcribing with word-level timing: ${audioPath}`);
-            const { stdout } = await execPromise(`python3 "${scriptPath}" "${audioPath}"`);
+            const { stdout } = await execPromise(`python3 "${scriptPath}" "${audioPath}"`, {
+                timeout: 30 * 60 * 1000 // 30 minutos
+            });
             const data = JSON.parse(stdout);
             if (data.error) throw new Error(data.error);
             return data;
@@ -138,7 +140,9 @@ class AIService {
 
         try {
             console.log(`[AI] Calculating smart framing for: ${videoPath}`);
-            const { stdout } = await execPromise(`python3 "${scriptPath}" "${videoPath}"`);
+            const { stdout } = await execPromise(`python3 "${scriptPath}" "${videoPath}"`, {
+                timeout: 30 * 60 * 1000 // 30 minutos
+            });
             const data = JSON.parse(stdout);
             if (data.error) throw new Error(data.error);
             return data;
