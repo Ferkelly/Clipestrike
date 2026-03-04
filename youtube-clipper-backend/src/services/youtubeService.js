@@ -211,12 +211,13 @@ class YouTubeService {
 
             const command = [
                 "yt-dlp",
-                `-f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"`,
+                `-f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best/bestvideo+bestaudio"`,
                 `--merge-output-format mp4`,
                 `--no-playlist`,
                 `--no-check-certificates`,
                 cookiesFlag,
                 jsRuntimes,
+                `--user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"`,
                 `-o "${outputPath}"`,
                 `"${videoUrl}"`,
             ].filter(Boolean).join(" ");
