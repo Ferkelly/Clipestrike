@@ -140,6 +140,13 @@ class AIService {
             pythonProcess.on('close', (code) => {
                 clearTimeout(timeoutId);
                 if (code !== 0) {
+                    // Log sys.path on failure for diagnostics
+                    console.error(`[AI] Python process failed with code ${code}. Stderr: ${stderrData}`);
+                    const { execSync } = require('child_process');
+                    try {
+                        const diag = execSync('python3 -c "import sys; print(sys.path)"').toString();
+                        console.error(`[AI-Diag] Python sys.path: ${diag}`);
+                    } catch (e) { }
                     return reject(new Error(`Python process failed with code ${code}. Stderr: ${stderrData}`));
                 }
                 try {
