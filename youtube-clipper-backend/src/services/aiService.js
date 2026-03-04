@@ -114,13 +114,17 @@ class AIService {
         const pythonPath = path.join(__dirname, '../../venv/bin/python3');
 
         return new Promise((resolve, reject) => {
-            console.log(`[AI] Starting transcription: ${audioPath}`);
+            // Use absolute path for venv
+            const resolvedPythonPath = path.resolve(pythonPath);
+            const resolvedScriptPath = path.resolve(scriptPath);
 
-            // Use local venv python if exists, fallback to system python3
             const fs = require('fs');
-            const cmd = fs.existsSync(pythonPath) ? pythonPath : 'python3';
+            const exists = fs.existsSync(resolvedPythonPath);
+            const cmd = exists ? resolvedPythonPath : 'python3';
 
-            const pythonProcess = spawn(cmd, [scriptPath, audioPath]);
+            console.log(`[AI] Binary: ${cmd} (exists: ${exists})`);
+            console.log(`[AI] Script: ${resolvedScriptPath}`);
+            const pythonProcess = spawn(cmd, [resolvedScriptPath, audioPath]);
             let stdoutData = '';
             let stderrData = '';
 
@@ -145,16 +149,17 @@ class AIService {
             pythonProcess.on('close', (code) => {
                 clearTimeout(timeoutId);
                 if (code !== 0) {
-                    // Log sys.path on failure for diagnostics
-                    console.error(`[AI] Python process failed with code ${code}. Stderr: ${stderrData}`);
+                    // Include diagnostic info in the error message for the frontend
+                    const errorMsg = `Python failed with code ${code}. Binary: ${cmd}. Stderr: ${stderrData}`;
+                    console.error(`[AI] ${errorMsg}`);
+
                     const { execSync } = require('child_process');
                     try {
-                        const fs = require('fs');
-                        const cmd = fs.existsSync(pythonPath) ? pythonPath : 'python3';
-                        const diag = execSync(`${cmd} -c "import sys; print(sys.path)"`).toString();
-                        console.error(`[AI-Diag] Python sys.path: ${diag}`);
+                        const diag = execSync(`${cmd} -c "import sys; print('ENV_PATH:', sys.path)"`).toString();
+                        console.error(`[AI-Diag] ${diag}`);
                     } catch (e) { }
-                    return reject(new Error(`Python process failed with code ${code}. Stderr: ${stderrData}`));
+
+                    return reject(new Error(errorMsg));
                 }
                 try {
                     const data = JSON.parse(stdoutData);
@@ -176,10 +181,12 @@ class AIService {
         const pythonPath = path.join(__dirname, '../../venv/bin/python3');
 
         return new Promise((resolve, reject) => {
-            console.log(`[AI] Starting smart framing: ${videoPath}`);
             const fs = require('fs');
-            const cmd = fs.existsSync(pythonPath) ? pythonPath : 'python3';
+            const resolvedPythonPath = path.resolve(pythonPath);
+            const exists = fs.existsSync(resolvedPythonPath);
+            const cmd = exists ? resolvedPythonPath : 'python3';
 
+            console.log(`[AI] Starting smart framing with: ${cmd} (exists: ${exists})`);
             const pythonProcess = spawn(cmd, [scriptPath, videoPath]);
             let stdoutData = '';
             let stderrData = '';
