@@ -206,7 +206,7 @@ class YouTubeService {
             }
 
             // Passa o Node.js como runtime JS para resolver o challenge do YouTube
-            const jsRuntimes = `--js-runtimes node`;
+            const jsRuntimes = `--js-runtimes node --remote-components ejs:github`;
 
             // Usa o yt-dlp do venv se existir, senão usa o global
             const venvYtDlp = path.join(__dirname, '../../venv/bin/yt-dlp');
