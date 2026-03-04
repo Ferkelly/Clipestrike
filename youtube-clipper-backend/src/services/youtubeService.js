@@ -3,6 +3,9 @@ const { db } = require('../config/database');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
 
 // Cache em memória: channelId → uploadsPlaylistId (não muda nunca)
 const uploadsPlaylistCache = new Map();
@@ -183,26 +186,50 @@ class YouTubeService {
         return null;
     }
 
-    // Download do vídeo (usando yt-dlp-exec)
+    // Download do vídeo (usando yt-dlp do sistema)
     async downloadVideo(videoUrl, outputPath) {
-        const ytDlpExec = require('yt-dlp-exec');
+        console.log(`[YouTubeService] Iniciando download: ${videoUrl}`);
 
         try {
-            const options = {
-                output: outputPath,
-                format: 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            };
+            // Caminho fixo dos cookies na VPS (pode ser sobrescrito pelo .env)
+            const cookiesPath = process.env.COOKIES_PATH ||
+                "/root/Clipstrike/youtube-clipper-backend/cookies.txt";
 
-            // Verificar se existe arquivo de cookies para evitar bloqueio de bot
-            const cookiesPath = path.join(process.cwd(), 'cookies.txt');
-            if (fs.existsSync(cookiesPath)) {
-                console.log(`[YouTubeService] Usando cookies de: ${cookiesPath}`);
-                options.cookies = cookiesPath;
+            const cookiesFlag = fs.existsSync(cookiesPath)
+                ? `--cookies "${cookiesPath}"`
+                : "";
+
+            if (!cookiesFlag) {
+                console.warn("[Download] ⚠️ cookies.txt não encontrado em:", cookiesPath);
+            } else {
+                console.log("[Download] ✅ Usando cookies:", cookiesPath);
             }
 
-            await ytDlpExec(videoUrl, options);
+            const command = [
+                "yt-dlp",
+                `-f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"`,
+                `--merge-output-format mp4`,
+                `--no-playlist`,
+                cookiesFlag,
+                `--user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"`,
+                `-o "${outputPath}"`,
+                `"${videoUrl}"`,
+            ].filter(Boolean).join(" ");
+
+            console.log("[Download] Executando comando:", command);
+
+            const { stdout, stderr } = await execAsync(command, {
+                timeout: 10 * 60 * 1000, // 10 minutos
+            });
+
+            if (!fs.existsSync(outputPath)) {
+                throw new Error("Download concluído mas arquivo não encontrado");
+            }
+
+            console.log("[Download] ✅ Concluído:", outputPath);
             return outputPath;
         } catch (error) {
+            console.error(`[Download] ❌ Erro: ${error.message}`);
             throw new Error(`Falha ao baixar vídeo: ${error.message}`);
         }
     }
