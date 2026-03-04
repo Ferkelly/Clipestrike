@@ -117,14 +117,20 @@ class AIService {
 
         try {
             console.log(`[AI] Transcribing with word-level timing: ${audioPath}`);
-            const { stdout } = await execPromise(`python3 "${scriptPath}" "${audioPath}"`, {
-                timeout: 30 * 60 * 1000 // 30 minutos
+            const { stdout, stderr } = await execPromise(`python3 "${scriptPath}" "${audioPath}"`, {
+                timeout: 30 * 60 * 1000, // 30 minutos
+                maxBuffer: 50 * 1024 * 1024 // 50MB buffer
             });
+
+            if (stderr) console.log('[AI] Transcription stderr:', stderr);
+
             const data = JSON.parse(stdout);
             if (data.error) throw new Error(data.error);
+            console.log('[AI] Transcription completed successfully.');
             return data;
         } catch (error) {
             console.error('[AI] transcribeWithWords error:', error.message);
+            if (error.stderr) console.error('[AI] Detailed stderr:', error.stderr);
             throw error;
         }
     }
@@ -140,14 +146,19 @@ class AIService {
 
         try {
             console.log(`[AI] Calculating smart framing for: ${videoPath}`);
-            const { stdout } = await execPromise(`python3 "${scriptPath}" "${videoPath}"`, {
-                timeout: 30 * 60 * 1000 // 30 minutos
+            const { stdout, stderr } = await execPromise(`python3 "${scriptPath}" "${videoPath}"`, {
+                timeout: 30 * 60 * 1000, // 30 minutos
+                maxBuffer: 50 * 1024 * 1024 // 50MB buffer
             });
+
+            if (stderr) console.log('[AI] Smart framing stderr:', stderr);
+
             const data = JSON.parse(stdout);
             if (data.error) throw new Error(data.error);
             return data;
         } catch (error) {
             console.warn('[AI] smart_framing failed, using center:', error.message);
+            if (error.stderr) console.error('[AI] Framing detailed stderr:', error.stderr);
             return { x_offset_pct: 0.5 };
         }
     }
