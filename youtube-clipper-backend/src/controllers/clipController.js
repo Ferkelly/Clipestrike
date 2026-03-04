@@ -210,91 +210,95 @@ class ClipController {
             const framingData = await aiService.getSmartFraming(workingFilePath);
             const xOffset = framingData.x_offset_pct || 0;
 
-            // 5. Clipping Loop
+            // 5. Parallel Clipping Execution
             const subtitleGenerator = require('../utils/subtitleGenerator');
             const createdClips = [];
 
-            for (let i = 0; i < clipsToProcess.length; i++) {
-                const stagePercent = 60 + (i / clipsToProcess.length) * 35;
-                const clipData = clipsToProcess[i];
-                emitProgress('CLIPPING', stagePercent, `Processando clip ${i + 1} de ${clipsToProcess.length}...`);
+            emitProgress('CLIPPING', 60, `Iniciando processamento paralelo de ${clipsToProcess.length} clips...`);
 
-                const startSeconds = this.timeToSeconds(clipData.start);
-                const endSeconds = this.timeToSeconds(clipData.end);
-                const duration = endSeconds - startSeconds;
+            // Process clips in parallel
+            await Promise.all(clipsToProcess.map(async (clipData, i) => {
+                try {
+                    const startSeconds = this.timeToSeconds(clipData.start);
+                    const endSeconds = this.timeToSeconds(clipData.end);
+                    const duration = endSeconds - startSeconds;
 
-                if (duration <= 0) continue;
+                    if (duration <= 0) return;
 
-                // Sync words for this specific clip
-                const clipWords = transcriptionData.words.filter(w =>
-                    w.start >= startSeconds && w.end <= endSeconds
-                ).map(w => ({
-                    ...w,
-                    start: w.start - startSeconds,
-                    end: w.end - startSeconds
-                }));
+                    // Sync words for this specific clip
+                    const clipWords = transcriptionData.words.filter(w =>
+                        w.start >= startSeconds && w.end <= endSeconds
+                    ).map(w => ({
+                        ...w,
+                        start: w.start - startSeconds,
+                        end: w.end - startSeconds
+                    }));
 
-                const assPath = path.join(uploadsDir, `${videoId}_${i}.ass`);
-                subtitleGenerator.generateAss(clipWords, assPath);
+                    const assPath = path.join(uploadsDir, `${videoId}_${i}.ass`);
+                    subtitleGenerator.generateAss(clipWords, assPath);
 
-                // Phase A: Base Crop
-                const rawClipPath = await ffmpegService.extractVerticalClip(
-                    workingFilePath,
-                    startSeconds,
-                    duration,
-                    `${videoId}_${i}_raw`,
-                    { xOffset, subtitlesPath: null }
-                );
+                    // Phase A: Base Crop
+                    const rawClipPath = await ffmpegService.extractVerticalClip(
+                        workingFilePath,
+                        startSeconds,
+                        duration,
+                        `${videoId}_${i}_raw`,
+                        { xOffset, subtitlesPath: null }
+                    );
 
-                // Phase B: Advanced Edits
-                const editResult = await videoEditingService.applyAdvancedEditing(
-                    rawClipPath,
-                    duration,
-                    clipWords,
-                    {
+                    // Phase B: Advanced Edits
+                    const editResult = await videoEditingService.applyAdvancedEditing(
+                        rawClipPath,
+                        duration,
+                        clipWords,
+                        {
+                            edit_silence_cut: options.silenceCut,
+                            edit_zoom: options.dynamicZoom,
+                            edit_broll: options.broll
+                        }
+                    );
+
+                    // Phase C: Burn Subtitles
+                    let finalPath = editResult.path;
+                    if (options.subtitles) {
+                        const subtitledPath = path.join(uploadsDir, `${videoId}_${i}_final.mp4`);
+                        await ffmpegService.addSubtitles(editResult.path, assPath, subtitledPath);
+                        finalPath = subtitledPath;
+                    }
+
+                    // Phase D: Upload to Storage & DB
+                    const fileName = `${videoId}_clip_${i}_${Date.now()}.mp4`;
+                    const fileBuffer = fs.readFileSync(finalPath);
+                    await db.uploadFile('clips', fileName, fileBuffer);
+                    const publicUrl = await db.getPublicUrl('clips', fileName);
+
+                    const clip = await db.createClip({
+                        video_id: videoId,
+                        user_id: video.user_id,
+                        title: clipData.title || `Clip ${i + 1}`,
+                        start_time: clipData.start,
+                        end_time: clipData.end,
+                        viral_score: clipData.viral_score || 70,
+                        file_url: publicUrl,
+                        status: 'done',
+                        hook: clipData.hook || '',
+                        reason: clipData.reason || '',
                         edit_silence_cut: options.silenceCut,
                         edit_zoom: options.dynamicZoom,
                         edit_broll: options.broll
-                    }
-                );
+                    });
 
-                // Phase C: Burn Subtitles
-                let finalPath = editResult.path;
-                if (options.subtitles) {
-                    const subtitledPath = path.join(uploadsDir, `${videoId}_${i}_final.mp4`);
-                    await ffmpegService.addSubtitles(editResult.path, assPath, subtitledPath);
-                    finalPath = subtitledPath;
+                    createdClips.push(clip);
+                    emitProgress('CLIPPING', 60 + (createdClips.length / clipsToProcess.length) * 35, `Clip ${createdClips.length}/${clipsToProcess.length} finalizado ✅`);
+
+                    // Cleanup clip-specific files
+                    [rawClipPath, finalPath !== editResult.path ? finalPath : null, assPath, ...editResult.tempFiles].forEach(f => {
+                        if (f && fs.existsSync(f)) try { fs.unlinkSync(f); } catch (_) { }
+                    });
+                } catch (clipErr) {
+                    console.error(`[Pipeline] Erro no clip ${i}:`, clipErr.message);
                 }
-
-                // Phase D: Upload to Storage & DB
-                const fileName = `${videoId}_clip_${i}_${Date.now()}.mp4`;
-                const fileBuffer = fs.readFileSync(finalPath);
-                await db.uploadFile('clips', fileName, fileBuffer);
-                const publicUrl = await db.getPublicUrl('clips', fileName);
-
-                const clip = await db.createClip({
-                    video_id: videoId,
-                    user_id: video.user_id,
-                    title: clipData.title || `Clip ${i + 1}`,
-                    start_time: clipData.start,
-                    end_time: clipData.end,
-                    viral_score: clipData.viral_score || 70,
-                    file_url: publicUrl,
-                    status: 'done',
-                    hook: clipData.hook || '',
-                    reason: clipData.reason || '',
-                    edit_silence_cut: options.silenceCut,
-                    edit_zoom: options.dynamicZoom,
-                    edit_broll: options.broll
-                });
-
-                createdClips.push(clip);
-
-                // Cleanup clip-specific files
-                [rawClipPath, finalPath !== editResult.path ? finalPath : null, assPath, ...editResult.tempFiles].forEach(f => {
-                    if (f && fs.existsSync(f)) try { fs.unlinkSync(f); } catch (_) { }
-                });
-            }
+            }));
 
             // 6. Cleanup & Finalize
             await db.updateVideoStatus(videoId, 'done', {

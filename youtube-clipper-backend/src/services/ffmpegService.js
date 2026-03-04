@@ -42,11 +42,11 @@ class FFmpegService {
                 .outputOptions([
                     '-pix_fmt yuv420p',
                     '-movflags +faststart',
-                    '-preset fast',
-                    '-crf 20',
+                    '-preset ultrafast',
+                    '-crf 23',
                     '-profile:v high',
                     '-level 4.2',
-                    '-r 60'
+                    '-r 30'
                 ]);
 
             if (onProgress) {
