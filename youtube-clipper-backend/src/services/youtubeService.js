@@ -193,7 +193,7 @@ class YouTubeService {
         try {
             // Caminho fixo dos cookies na VPS (pode ser sobrescrito pelo .env)
             const cookiesPath = process.env.COOKIES_PATH ||
-                "/root/Clipstrike/youtube-clipper-backend/cookies.txt";
+                "/root/Clipestrike/youtube-clipper-backend/cookies.txt";
 
             const cookiesFlag = fs.existsSync(cookiesPath)
                 ? `--cookies "${cookiesPath}"`
