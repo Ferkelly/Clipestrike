@@ -1,6 +1,6 @@
 import sys
 import json
-import stable_whisper
+import stable_ts as stable_whisper
 
 def transcribe(audio_path):
     # Load model (using 'tiny' for speed on CPU VPS)

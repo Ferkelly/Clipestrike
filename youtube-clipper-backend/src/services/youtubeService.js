@@ -210,7 +210,7 @@ class YouTubeService {
 
             const command = [
                 "yt-dlp",
-                `-f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best/bestvideo+bestaudio"`,
+                `-f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"`,
                 `--merge-output-format mp4`,
                 `--no-playlist`,
                 `--no-check-certificates`,
