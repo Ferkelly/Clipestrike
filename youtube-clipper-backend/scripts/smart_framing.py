@@ -16,8 +16,8 @@ def get_smart_framing(video_path):
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     
-    # Sample frames (every 1 second)
-    sample_interval = max(1, int(fps))
+    # Sample frames (every 3 seconds to be faster)
+    sample_interval = max(1, int(fps * 3))
     face_positions = []
 
     with mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5) as face_detection:
