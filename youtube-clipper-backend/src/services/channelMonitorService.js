@@ -28,7 +28,7 @@ class ChannelMonitorService {
 
         try {
             // Cria o registro do vídeo no banco com status pending
-            const { db } = require('./database');
+            const { db } = require('../config/database');
             const video = await db.createVideo({
                 user_id: userId,
                 channel_id: channelId,

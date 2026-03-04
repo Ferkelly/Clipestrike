@@ -13,9 +13,12 @@ class ClipController {
      * Entry point for processing a video that already exists in the database.
      */
     async processVideo(req, res) {
-        const { videoId } = req.params;
+        console.log('[ClipController] processVideo body:', JSON.stringify(req.body));
+        const videoId = req.params.videoId || req.body.videoId;
         const userId = req.user.id;
         const io = req.app.get('io');
+
+        if (!videoId) return res.status(400).json({ error: 'videoId é obrigatório.' });
 
         try {
             const { data: video, error } = await supabase
@@ -28,8 +31,12 @@ class ClipController {
                 return res.status(404).json({ error: 'Vídeo não encontrado' });
             }
 
-            // Use saved options or defaults
-            const options = video.processing_options || this._getDefaultOptions();
+            // Combine saved options with request options and defaults
+            const options = {
+                ...this._getDefaultOptions(),
+                ...video.processing_options,
+                ...(req.body.options || {})
+            };
 
             // 1. Respond quickly to user
             res.json({ success: true, message: 'Processamento iniciado', videoId });
@@ -37,12 +44,12 @@ class ClipController {
             // 2. Start background pipeline
             setImmediate(() => {
                 this.runUnifiedPipeline(videoId, video, io, options).catch(err => {
-                    console.error(`[Background Pipeline Error for ${videoId}]:`, err);
+                    console.error(`[Background Pipeline Error for ${videoId}]:`, err.message);
                 });
             });
 
         } catch (error) {
-            console.error('[ProcessVideo] Immediate error:', error);
+            console.error('[ProcessVideo] Immediate error:', error.message);
             res.status(500).json({ error: error.message });
         }
     }
@@ -93,6 +100,7 @@ class ClipController {
                 .eq('user_id', userId)
                 .single();
 
+            // Combine defaults with provided options
             const mergedOptions = { ...this._getDefaultOptions(), ...options };
 
             if (!video) {

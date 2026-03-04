@@ -92,22 +92,26 @@ router.post("/upload-file",
  * Re-routes to ClipController logic.
  */
 router.post("/process-with-options", authenticate, async (req, res) => {
-    const { videoId, youtubeUrl, options = {} } = req.body;
+    console.log("[process-with-options] Body recebido:", JSON.stringify(req.body));
+    console.log("[process-with-options] UserId:", req.user?.id);
 
-    if (youtubeUrl) {
-        // Use clipController.processUrl which handles everything for URLs
-        req.body.url = youtubeUrl;
-        return clipController.processUrl(req, res);
-    } else if (videoId) {
-        // Update options first, then call processVideo
-        try {
+    try {
+        const { videoId, youtubeUrl, options = {} } = req.body;
+
+        if (youtubeUrl) {
+            req.body.url = youtubeUrl;
+            return clipController.processUrl(req, res);
+        } else if (videoId) {
+            // Atualizar opções primeiro
             await supabase.from("videos").update({ processing_options: options }).eq("id", videoId);
+            // O controller agora aceita videoId no body ou params
             return clipController.processVideo(req, res);
-        } catch (err) {
-            return res.status(500).json({ error: err.message });
+        } else {
+            return res.status(400).json({ error: "videoId ou youtubeUrl é obrigatório" });
         }
-    } else {
-        return res.status(400).json({ error: "videoId ou youtubeUrl é obrigatório" });
+    } catch (err) {
+        console.error("[process-with-options] CRASH:", err.message, err.stack);
+        return res.status(500).json({ error: err.message });
     }
 });
 
