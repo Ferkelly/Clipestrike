@@ -207,7 +207,7 @@ class YouTubeService {
 
             // Passa o Node.js como runtime JS para resolver o challenge do YouTube
             const nodePath = process.execPath; // ex: /usr/bin/node
-            const jsRuntimes = `--js-runtimes "nodejs:${nodePath}"`;
+            const jsRuntimes = `--js-runtimes "node:${nodePath}"`;
 
             const command = [
                 "yt-dlp",
