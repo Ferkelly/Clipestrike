@@ -111,11 +111,16 @@ class AIService {
         const { spawn } = require('child_process');
         const path = require('path');
         const scriptPath = path.join(__dirname, '../../scripts/transcribe_with_words.py');
+        const pythonPath = path.join(__dirname, '../../venv/bin/python3');
 
         return new Promise((resolve, reject) => {
             console.log(`[AI] Starting transcription: ${audioPath}`);
 
-            const pythonProcess = spawn('python3', [scriptPath, audioPath]);
+            // Use local venv python if exists, fallback to system python3
+            const fs = require('fs');
+            const cmd = fs.existsSync(pythonPath) ? pythonPath : 'python3';
+
+            const pythonProcess = spawn(cmd, [scriptPath, audioPath]);
             let stdoutData = '';
             let stderrData = '';
 
@@ -144,7 +149,9 @@ class AIService {
                     console.error(`[AI] Python process failed with code ${code}. Stderr: ${stderrData}`);
                     const { execSync } = require('child_process');
                     try {
-                        const diag = execSync('python3 -c "import sys; print(sys.path)"').toString();
+                        const fs = require('fs');
+                        const cmd = fs.existsSync(pythonPath) ? pythonPath : 'python3';
+                        const diag = execSync(`${cmd} -c "import sys; print(sys.path)"`).toString();
                         console.error(`[AI-Diag] Python sys.path: ${diag}`);
                     } catch (e) { }
                     return reject(new Error(`Python process failed with code ${code}. Stderr: ${stderrData}`));
@@ -163,30 +170,44 @@ class AIService {
 
     // Calcular enquadramento inteligente
     async getSmartFraming(videoPath) {
-        const { exec } = require('child_process');
-        const util = require('util');
+        const { spawn } = require('child_process');
         const path = require('path');
-        const execPromise = util.promisify(exec);
-
         const scriptPath = path.join(__dirname, '../../scripts/smart_framing.py');
+        const pythonPath = path.join(__dirname, '../../venv/bin/python3');
 
-        try {
-            console.log(`[AI] Calculating smart framing for: ${videoPath}`);
-            const { stdout, stderr } = await execPromise(`python3 "${scriptPath}" "${videoPath}"`, {
-                timeout: 30 * 60 * 1000, // 30 minutos
-                maxBuffer: 50 * 1024 * 1024 // 50MB buffer
+        return new Promise((resolve, reject) => {
+            console.log(`[AI] Starting smart framing: ${videoPath}`);
+            const fs = require('fs');
+            const cmd = fs.existsSync(pythonPath) ? pythonPath : 'python3';
+
+            const pythonProcess = spawn(cmd, [scriptPath, videoPath]);
+            let stdoutData = '';
+            let stderrData = '';
+
+            pythonProcess.stdout.on('data', (data) => {
+                stdoutData += data.toString();
             });
 
-            if (stderr) console.log('[AI] Smart framing stderr:', stderr);
+            pythonProcess.stderr.on('data', (data) => {
+                const chunk = data.toString();
+                stderrData += chunk;
+                console.warn(`[AI-Py-Err]: ${chunk.trim()}`);
+            });
 
-            const data = JSON.parse(stdout);
-            if (data.error) throw new Error(data.error);
-            return data;
-        } catch (error) {
-            console.warn('[AI] smart_framing failed, using center:', error.message);
-            if (error.stderr) console.error('[AI] Framing detailed stderr:', error.stderr);
-            return { x_offset_pct: 0.5 };
-        }
+            pythonProcess.on('close', (code) => {
+                if (code !== 0) {
+                    console.warn('[AI] smart_framing failed, using center:', stderrData);
+                    return resolve({ x_offset_pct: 0.5 });
+                }
+                try {
+                    const data = JSON.parse(stdoutData);
+                    if (data.error) throw new Error(data.error);
+                    resolve(data);
+                } catch (e) {
+                    resolve({ x_offset_pct: 0.5 });
+                }
+            });
+        });
     }
 
     // Análise de sentimento/engajamento
