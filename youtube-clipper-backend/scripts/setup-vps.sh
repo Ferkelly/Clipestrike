@@ -29,9 +29,9 @@ apt install -y ffmpeg
 echo "📥 Instalando yt-dlp..."
 pip3 install yt-dlp
 
-# ─── 6. Instalar Whisper (transcrição local gratuita) ────
-echo "🎙️  Instalando Whisper..."
-pip3 install openai-whisper
+# ─── 6. Instalar Whisper e Dependências de IA ─────────────
+echo "🎙️  Instalando Whisper e IA libs..."
+pip3 install openai-whisper stable-whisper opencv-python mediapipe --break-system-packages
 
 # ─── 7. Instalar PM2 (gerenciador de processos) ──────────
 echo "⚙️  Instalando PM2..."
