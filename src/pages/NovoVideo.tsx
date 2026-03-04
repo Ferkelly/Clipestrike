@@ -177,8 +177,8 @@ export default function NovoVideoPage() {
         }, 120_000); // 2 minutos
 
         const hardTimeout = setTimeout(() => {
-            setProcessingError("Timeout: o processamento demorou mais de 10 minutos. Tente novamente.");
-        }, 600_000); // 10 minutos
+            setProcessingError("Timeout: o processamento demorou mais de 30 minutos. Tente novamente.");
+        }, 1_800_000); // 30 minutos
 
         return () => {
             clearTimeout(slowTimeout);
