@@ -206,8 +206,7 @@ class YouTubeService {
             }
 
             // Passa o Node.js como runtime JS para resolver o challenge do YouTube
-            const nodePath = process.execPath; // ex: /usr/bin/node
-            const jsRuntimes = `--js-runtimes "node:${nodePath}"`;
+            const jsRuntimes = `--js-runtimes node`;
 
             const command = [
                 "yt-dlp",
@@ -215,6 +214,7 @@ class YouTubeService {
                 `--merge-output-format mp4`,
                 `--no-playlist`,
                 `--no-check-certificates`,
+                `--force-ipv4`,
                 cookiesFlag,
                 jsRuntimes,
                 `--user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"`,
