@@ -211,7 +211,7 @@ class YouTubeService {
                 `--merge-output-format mp4`,
                 `--no-playlist`,
                 cookiesFlag,
-                `--extractor-args "youtube:player_client=ios"`,
+
                 `-o "${outputPath}"`,
                 `"${videoUrl}"`,
             ].filter(Boolean).join(" ");
