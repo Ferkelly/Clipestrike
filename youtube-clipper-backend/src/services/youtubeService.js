@@ -205,13 +205,17 @@ class YouTubeService {
                 console.log("[Download] ✅ Usando cookies:", cookiesPath);
             }
 
+            // Passa o Node.js como runtime JS para resolver o challenge do YouTube
+            const nodePath = process.execPath; // ex: /usr/bin/node
+            const jsRuntimes = `--js-runtimes "nodejs:${nodePath}"`;
+
             const command = [
                 "yt-dlp",
                 `-f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"`,
                 `--merge-output-format mp4`,
                 `--no-playlist`,
                 cookiesFlag,
-
+                jsRuntimes,
                 `-o "${outputPath}"`,
                 `"${videoUrl}"`,
             ].filter(Boolean).join(" ");
