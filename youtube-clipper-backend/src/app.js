@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 
 const authRoutes = require('./routes/auth');
 const channelRoutes = require('./routes/channels');
@@ -76,10 +77,19 @@ app.set('io', io);
 io.on('connection', (socket) => {
     console.log('Cliente conectado:', socket.id);
 
-    socket.on('join-user-room', (userId) => {
-        socket.join(userId);
-        console.log(`[Socket] Usuário ${userId} entrou na sala`);
-    });
+    const token = socket.handshake.auth?.token;
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'clipstrike-secret-key-2026');
+            const userId = decoded.id || decoded.sub;
+            if (userId) {
+                socket.join(userId);
+                console.log(`[Socket] Usuário ${userId} conectado e entrou na sala`);
+            }
+        } catch (err) {
+            console.error('[Socket] Erro ao verificar token:', err.message);
+        }
+    }
 
     socket.on('join_channel', (channelId) => {
         socket.join(`channel_${channelId}`);

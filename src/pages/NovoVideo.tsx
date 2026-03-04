@@ -22,6 +22,7 @@ import {
     RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getSocket } from "../lib/socket";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || "";
@@ -93,6 +94,10 @@ export default function NovoVideoPage() {
 
     // Step 3: Processing Status
     const [videoProcessedId, setVideoProcessedId] = useState<string | null>(null);
+    const [processingPercent, setProcessingPercent] = useState(0);
+    const [processingMsg, setProcessingMsg] = useState("Iniciando pipeline...");
+    const [processingError, setProcessingError] = useState("");
+    const [isSlow, setIsSlow] = useState(false);
 
     // --- YT URL Logic ---
     useEffect(() => {
@@ -161,6 +166,25 @@ export default function NovoVideoPage() {
         const timeoutId = setTimeout(fetchPreview, 500);
         return () => clearTimeout(timeoutId);
     }, [youtubeUrl]);
+
+    // --- Timeout Logic for Step 3 ---
+    useEffect(() => {
+        if (step !== 3) return;
+
+        const slowTimeout = setTimeout(() => {
+            setIsSlow(true);
+            setProcessingMsg("⚠️ Processamento demorado. O pipeline ainda está rodando...");
+        }, 120_000); // 2 minutos
+
+        const hardTimeout = setTimeout(() => {
+            setProcessingError("Timeout: o processamento demorou mais de 10 minutos. Tente novamente.");
+        }, 600_000); // 10 minutos
+
+        return () => {
+            clearTimeout(slowTimeout);
+            clearTimeout(hardTimeout);
+        };
+    }, [step]);
 
     // --- File Upload Logic ---
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,7 +261,13 @@ export default function NovoVideoPage() {
 
     const handleStartProcess = async () => {
         setStep(3);
+        setProcessingError("");
+        setProcessingPercent(0);
+        setProcessingMsg("Iniciando pipeline...");
+        setIsSlow(false);
+
         const token = localStorage.getItem("clipstrike_token");
+        const socket = getSocket();
 
         try {
             const payload = {
@@ -258,13 +288,30 @@ export default function NovoVideoPage() {
             const data = await res.json();
             if (data.videoId) {
                 setVideoProcessedId(data.videoId);
-                // Redirecionar para dashboard em modo "execuções" ou manter aqui com progresso
-                // Para manter a consistência, vamos redirecionar para a Dashboard que já lida com socket
-                setTimeout(() => navigate("/app/dashboard/runs"), 1500);
+
+                // Escutar progresso real
+                socket.on("video-progress", (progressData: any) => {
+                    if (progressData.videoId === data.videoId || progressData.id === data.videoId) {
+                        setProcessingPercent(progressData.percent);
+                        setProcessingMsg(progressData.message);
+
+                        if (progressData.status === 'done' || progressData.percent >= 100) {
+                            setProcessingMsg("Clips prontos! ✅");
+                            setTimeout(() => navigate("/app/dashboard/runs"), 2000);
+                        }
+                    }
+                });
+
+                socket.on("video-error", (errorData: any) => {
+                    if (errorData.videoId === data.videoId || errorData.id === data.videoId) {
+                        setProcessingError(errorData.message || "Erro no pipeline.");
+                    }
+                });
+            } else {
+                throw new Error(data.error || "Erro ao iniciar processamento.");
             }
-        } catch (err) {
-            alert("Erro ao iniciar processamento.");
-            setStep(2);
+        } catch (err: any) {
+            setProcessingError(err.message);
         }
     };
 
@@ -642,18 +689,52 @@ export default function NovoVideoPage() {
                         >
                             <div className="relative mx-auto w-32 h-32 flex items-center justify-center">
                                 <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
-                                <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                                <Zap className="h-12 w-12 text-primary shadow-[0_0_30px_rgba(255,90,31,0.5)]" fill="currentColor" />
+                                <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" style={{
+                                    borderTopColor: processingError ? '#ef4444' : '#FF5A1F',
+                                    animationDuration: processingPercent >= 100 ? '0s' : '1s'
+                                }} />
+                                {processingError ? (
+                                    <AlertCircle className="h-12 w-12 text-red-500" />
+                                ) : processingPercent >= 100 ? (
+                                    <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                                ) : (
+                                    <Zap className="h-12 w-12 text-primary shadow-[0_0_30px_rgba(255,90,31,0.5)]" fill="currentColor" />
+                                )}
                             </div>
 
                             <div className="space-y-2">
-                                <h2 className="text-3xl font-black tracking-tighter">Preparando os motores...</h2>
-                                <p className="text-white/40 max-w-sm mx-auto">Sua solicitação foi enviada para nossos servidores de IA. Você será redirecionado para acompanhar o progresso.</p>
+                                <h2 className="text-3xl font-black tracking-tighter">
+                                    {processingError ? "Algo deu errado" : processingPercent >= 100 ? "Tudo pronto!" : "Processando seu vídeo..."}
+                                </h2>
+                                <p className="text-white/40 max-w-sm mx-auto">
+                                    {processingError || "Sua solicitação está sendo processada por nossa IA. Não feche esta janela."}
+                                </p>
                             </div>
 
-                            <div className="flex items-center justify-center gap-3 text-xs font-bold text-primary animate-pulse">
-                                <Loader2 className="w-4 h-4 animate-spin" /> ALOCANDO RECURSOS DE GPU...
-                            </div>
+                            {!processingError && (
+                                <div className="max-w-md mx-auto w-full space-y-4">
+                                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                                        <span className={isSlow ? "text-amber-500" : "text-primary"}>{processingMsg}</span>
+                                        <span className="text-white">{processingPercent}%</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${processingPercent}%` }}
+                                            className={`h-full transition-all duration-500 ${processingPercent >= 100 ? 'bg-emerald-500' : 'bg-primary'}`}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {processingError && (
+                                <button
+                                    onClick={() => setStep(2)}
+                                    className="px-8 py-3 bg-white/5 border border-white/10 rounded-2xl text-xs font-bold hover:bg-white/10 transition-all"
+                                >
+                                    Voltar e tentar novamente
+                                </button>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>

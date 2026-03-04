@@ -140,7 +140,7 @@ class ClipController {
      */
     async runUnifiedPipeline(videoId, video, io, options) {
         const emitProgress = (step, percent, msg) => {
-            console.log(`[Pipeline] [${videoId}] [${percent}%] ${msg}`);
+            console.log(`[Pipeline] ${videoId} | ${step} | ${Math.round(percent)}% | ${msg}`);
             io?.to(video.user_id).emit('video-progress', {
                 id: videoId,
                 videoId,
@@ -150,6 +150,13 @@ class ClipController {
                 title: video.title || 'Vídeo'
             });
         };
+
+        console.log("═══════════════════════════════════");
+        console.log(`[Pipeline] INICIADO`);
+        console.log(`  videoId: ${videoId}`);
+        console.log(`  userId:  ${video.user_id}`);
+        console.log(`  time:    ${new Date().toISOString()}`);
+        console.log("═══════════════════════════════════");
 
         try {
             // Initial state update

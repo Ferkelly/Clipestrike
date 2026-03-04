@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { io, Socket } from "socket.io-client";
+import { Socket } from "socket.io-client";
+import { getSocket } from "../lib/socket";
 import {
     Zap,
     Video,
@@ -430,10 +431,7 @@ export default function DashboardPage() {
         };
         init();
 
-        const token = localStorage.getItem("clipstrike_token");
-        const socket: Socket = io(SOCKET_URL, {
-            auth: { token }
-        });
+        const socket = getSocket();
 
         socket.on("video-progress", (data: any) => {
             if (data.status === 'done' || data.status === 'error') {
@@ -451,7 +449,7 @@ export default function DashboardPage() {
             });
         });
 
-        return () => { socket.disconnect(); };
+        // socket é gerenciado pelo getSocket
     }, []);
 
     function detectUrlType(url: string): "video" | "channel" | "invalid" {
@@ -492,20 +490,10 @@ export default function DashboardPage() {
 
             const { videoId } = await res.json();
 
-            // Conectar Socket.io para progresso se ainda não estiver conectado no useEffect
-            const socket: Socket = io(SOCKET_URL, {
-                auth: { token }
-            });
+            // Usa o socket global
+            const socket = getSocket();
 
-            // Entrar no quarto do usuário
-            // Precisamos buscar o ID do usuário se não tivermos
-            const profileRes = await fetch(`${API_URL}/auth/me`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            const profileData = await profileRes.json();
-            if (profileData.user?.id) {
-                socket.emit('join-user-room', profileData.user.id);
-            }
+            // O room join é automático via auth no server
 
             socket.on("video-progress", (data: any) => {
                 if (data.videoId !== videoId) return;
@@ -515,7 +503,7 @@ export default function DashboardPage() {
                 if (data.status === 'done' || data.percent >= 100) {
                     setProcessing(false);
                     setStep("Concluído! ✅");
-                    socket.disconnect();
+                    // No longer disconnecting manually as it is shared
                     fetchClips();
                     setActiveTab("clips");
                 }
@@ -525,7 +513,7 @@ export default function DashboardPage() {
                 if (data.videoId !== videoId) return;
                 setProcessing(false);
                 setUrlError(data.message || "Erro no processamento");
-                socket.disconnect();
+                // No longer disconnecting manually
             });
 
         } catch (err: any) {
