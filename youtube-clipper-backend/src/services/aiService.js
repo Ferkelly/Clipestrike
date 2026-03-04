@@ -108,31 +108,50 @@ class AIService {
 
     // Transcrever com palavras e timestamps (usando script Python)
     async transcribeWithWords(audioPath) {
-        const { exec } = require('child_process');
-        const util = require('util');
+        const { spawn } = require('child_process');
         const path = require('path');
-        const execPromise = util.promisify(exec);
-
         const scriptPath = path.join(__dirname, '../../scripts/transcribe_with_words.py');
 
-        try {
-            console.log(`[AI] Transcribing with word-level timing: ${audioPath}`);
-            const { stdout, stderr } = await execPromise(`python3 "${scriptPath}" "${audioPath}"`, {
-                timeout: 30 * 60 * 1000, // 30 minutos
-                maxBuffer: 50 * 1024 * 1024 // 50MB buffer
+        return new Promise((resolve, reject) => {
+            console.log(`[AI] Starting transcription: ${audioPath}`);
+
+            const pythonProcess = spawn('python3', [scriptPath, audioPath]);
+            let stdoutData = '';
+            let stderrData = '';
+
+            pythonProcess.stdout.on('data', (data) => {
+                const chunk = data.toString();
+                stdoutData += chunk;
+                // Log partial stdout if it's not too long (to see progress/debug)
+                if (chunk.length < 500) console.log(`[AI-Py-Out]: ${chunk.trim()}`);
             });
 
-            if (stderr) console.log('[AI] Transcription stderr:', stderr);
+            pythonProcess.stderr.on('data', (data) => {
+                const chunk = data.toString();
+                stderrData += chunk;
+                console.warn(`[AI-Py-Err]: ${chunk.trim()}`);
+            });
 
-            const data = JSON.parse(stdout);
-            if (data.error) throw new Error(data.error);
-            console.log('[AI] Transcription completed successfully.');
-            return data;
-        } catch (error) {
-            console.error('[AI] transcribeWithWords error:', error.message);
-            if (error.stderr) console.error('[AI] Detailed stderr:', error.stderr);
-            throw error;
-        }
+            const timeoutId = setTimeout(() => {
+                pythonProcess.kill();
+                reject(new Error('Transcription timed out after 30 minutes'));
+            }, 30 * 60 * 1000);
+
+            pythonProcess.on('close', (code) => {
+                clearTimeout(timeoutId);
+                if (code !== 0) {
+                    return reject(new Error(`Python process failed with code ${code}. Stderr: ${stderrData}`));
+                }
+                try {
+                    const data = JSON.parse(stdoutData);
+                    if (data.error) throw new Error(data.error);
+                    console.log('[AI] Transcription completed successfully.');
+                    resolve(data);
+                } catch (e) {
+                    reject(new Error(`Failed to parse Python output: ${e.message}. Raw: ${stdoutData.substring(0, 100)}...`));
+                }
+            });
+        });
     }
 
     // Calcular enquadramento inteligente
