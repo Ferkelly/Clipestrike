@@ -113,12 +113,7 @@ const addChannel = async (req, res) => {
 
         console.log(`[AddChannel] Finalizing: ${finalTitle} (${finalId})`);
 
-        // Verificar se já existe
-        const existing = await db.getChannelByYoutubeId(finalId);
-        if (existing) {
-            console.log(`[AddChannel] Channel already exists: ${finalId}`);
-            return res.status(409).json({ error: 'Canal já cadastrado.', channel: existing });
-        }
+        // O db.createChannel agora usa UPSERT, então não precisamos falhar se já existir
 
         const channel = await db.createChannel({
             user_id: req.user.id,

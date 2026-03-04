@@ -56,20 +56,19 @@ const fetchVideos = async (req, res) => {
         const savedVideos = [];
         for (const item of plRes.data.items) {
             const vId = item.contentDetails.videoId;
-            const existing = await db.getVideoByYoutubeId(vId);
-            if (!existing) {
-                const saved = await db.createVideo({
-                    user_id: req.user.id,
-                    channel_id: channelId,
-                    youtube_video_id: vId,
-                    title: item.snippet?.title,
-                    description: item.snippet?.description,
-                    thumbnail: item.snippet?.thumbnails?.high?.url,
-                    published_at: item.snippet?.publishedAt,
-                    status: 'pending',
-                });
-                savedVideos.push(saved);
-            }
+            // O db.createVideo já faz upsert, então podemos chamar direto
+            const saved = await db.createVideo({
+                user_id: req.user.id,
+                channel_id: channelId,
+                youtube_video_id: vId,
+                title: item.snippet?.title,
+                description: item.snippet?.description,
+                thumbnail: item.snippet?.thumbnails?.high?.url,
+                published_at: item.snippet?.publishedAt,
+                status: 'pending',
+            });
+            // O upsert retorna o registro; aqui só adicionamos à lista se for útil
+            savedVideos.push(saved);
         }
 
         res.json({ message: `${savedVideos.length} novos vídeos importados.`, videos: savedVideos });

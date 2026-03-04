@@ -52,7 +52,7 @@ const db = {
   async createChannel(channelData) {
     const { data, error } = await supabase
       .from('channels')
-      .insert([channelData])
+      .upsert(channelData, { onConflict: 'youtube_channel_id' })
       .select()
       .single();
     if (error) throw error;
@@ -82,7 +82,7 @@ const db = {
   async createVideo(videoData) {
     const { data, error } = await supabase
       .from('videos')
-      .upsert(videoData, { onConflict: 'youtube_video_id' })
+      .upsert(videoData, { onConflict: 'youtube_video_id,user_id' })
       .select()
       .single();
     if (error) throw error;
